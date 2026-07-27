@@ -30,7 +30,7 @@ get_header();
 
         <?php
         wp_link_pages(array(
-            'before' => '<div class="pagination">' . esc_html__('Pages:', 'lumen'),
+            'before' => '<div class="page-links">' . esc_html__('Pages:', 'lumen'),
             'after'  => '</div>',
         ));
         ?>

@@ -39,7 +39,7 @@ get_header();
 
         <?php
         wp_link_pages(array(
-            'before' => '<div class="pagination">' . esc_html__('Pages:', 'lumen'),
+            'before' => '<div class="page-links">' . esc_html__('Pages:', 'lumen'),
             'after'  => '</div>',
         ));
         ?>
@@ -53,15 +53,32 @@ get_header();
     ?>
         <nav class="post-navigation" aria-label="<?php esc_attr_e('Post navigation', 'lumen'); ?>">
             <?php
-            previous_post_link(
-                '<div class="nav-previous"><span class="nav-label">' . esc_html__('Previous', 'lumen') . '</span><div class="nav-title">%link</div></div>',
-                '%title'
-            );
-            next_post_link(
-                '<div class="nav-next"><span class="nav-label">' . esc_html__('Next', 'lumen') . '</span><div class="nav-title">%link</div></div>',
-                '%title'
-            );
+            // Rendered from the objects already fetched above. Using
+            // previous_post_link()/next_post_link() here would re-run both
+            // adjacent-post queries, and their %title token bypasses the
+            // untitled fallback.
             ?>
+            <?php if ($lumen_prev) : ?>
+                <div class="nav-previous">
+                    <span class="nav-label"><?php esc_html_e('Previous', 'lumen'); ?></span>
+                    <div class="nav-title">
+                        <a href="<?php echo esc_url(get_permalink($lumen_prev)); ?>" rel="prev">
+                            <?php echo esc_html(lumen_get_display_title($lumen_prev)); ?>
+                        </a>
+                    </div>
+                </div>
+            <?php endif; ?>
+
+            <?php if ($lumen_next) : ?>
+                <div class="nav-next">
+                    <span class="nav-label"><?php esc_html_e('Next', 'lumen'); ?></span>
+                    <div class="nav-title">
+                        <a href="<?php echo esc_url(get_permalink($lumen_next)); ?>" rel="next">
+                            <?php echo esc_html(lumen_get_display_title($lumen_next)); ?>
+                        </a>
+                    </div>
+                </div>
+            <?php endif; ?>
         </nav>
     <?php endif; ?>
 

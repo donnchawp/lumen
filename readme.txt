@@ -3,7 +3,7 @@ Contributors: donncha
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 1.0.1
+Stable tag: 1.0.2
 License: GNU General Public License v2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -30,7 +30,7 @@ A dark, gallery-first WordPress theme designed for photoblogs. Features a respon
 == Notes ==
 
 = Posts without a title =
-Photoblog posts are often untitled. Those fall back to "Untitled, <date>" so grid links still have an accessible name.
+Photoblog posts are often untitled. Those fall back to "Untitled" so grid links still have an accessible name. The date is not repeated in the fallback because it is already rendered beside the title.
 
 = Password-protected posts =
 The featured image of a password-protected post is not shown until the password is supplied, and the post is listed under "Notes & Writings" rather than as a browsable grid tile. On a photoblog the image is the thing being protected.
@@ -51,6 +51,18 @@ Lumen is distributed under the terms of the GNU GPL version 2 or later.
 This theme bundles no third-party assets, fonts, images, or libraries. It uses the system font stack via CSS and ships no JavaScript of its own.
 
 == Changelog ==
+
+= 1.0.2 =
+* Portrait cards no longer stretch their landscape neighbours. Grid items stretch by default and stretch overrides aspect-ratio, so one portrait photo was forcing every landscape photo in the same row to a 3:4 crop.
+* The keyboard focus ring on gallery links is visible again. It was drawn outside the card, which clips overflow.
+* Dark accent colours picked in the Customizer are lightened until they reach 4.5:1 against the background, instead of rendering the site title and focus outlines unreadable.
+* Added editor-style.css so wide and full alignments preview correctly in the block editor.
+* Added layout for [gallery] shortcodes, which had none because html5 gallery support suppresses core's inline styles.
+* Untitled posts read "Untitled" rather than "Untitled, <date>", which was making the link's accessible name announce the date twice. Untitled protected posts read "Protected: Untitled" instead of "Protected: " with a dangling colon.
+* Post navigation renders from the adjacent posts already fetched, halving the queries, and now honours the untitled fallback.
+* wp_link_pages() output has its own class instead of inheriting the pager's bordered boxes.
+* An empty archive has an h1 again.
+* Floated images in post content are cleared.
 
 = 1.0.1 =
 * Added page.php. Static Pages previously fell through to index.php and rendered as a photo tile with their content discarded.

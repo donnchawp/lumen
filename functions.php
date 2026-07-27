@@ -51,11 +51,11 @@ function lumen_setup() {
     // Add theme support for responsive embeds
     add_theme_support('responsive-embeds');
 
-    // Block editor: wide and full alignments.
-    // No add_editor_style() here on purpose. style.css carries a universal
-    // reset and overflow-x:hidden on body, which are not safe to load into the
-    // editor. Matching editor styles need their own scoped stylesheet.
+    // Block editor: wide and full alignments, previewed with a dedicated
+    // stylesheet. style.css is not used here: its universal reset and
+    // overflow-x:hidden on body would break the editing surface.
     add_theme_support('align-wide');
+    add_editor_style('editor-style.css');
 
     // Register navigation menu
     register_nav_menus(array(
@@ -77,10 +77,11 @@ function lumen_scripts() {
     );
 
     // Accent colour from the Customizer, applied as a custom property override.
-    $accent = get_theme_mod('lumen_accent_color', '#ffffff');
-    $accent = sanitize_hex_color($accent);
+    $accent = sanitize_hex_color(get_theme_mod('lumen_accent_color', '#ffffff'));
 
     if ($accent) {
+        $accent = lumen_ensure_contrast($accent, '#0a0a0a');
+
         wp_add_inline_style(
             'lumen-style',
             ':root{--accent:' . $accent . ';}'
@@ -105,36 +106,158 @@ function lumen_customize_register($wp_customize) {
     ));
 
     $wp_customize->add_control(new WP_Customize_Color_Control($wp_customize, 'lumen_accent_color', array(
-        'label'   => __('Accent Color', 'lumen'),
-        'section' => 'colors',
+        'label'       => __('Accent Color', 'lumen'),
+        'description' => __('Used for the site title, link hovers and focus outlines. Dark colours are lightened automatically so they stay readable on the dark background.', 'lumen'),
+        'section'     => 'colors',
     )));
 }
 add_action('customize_register', 'lumen_customize_register');
 
 /**
- * Display title for a post, falling back to the date when the title is empty.
+ * Display title for a post, falling back to "Untitled" when there is none.
  *
  * Photoblog posts are often untitled. Without a fallback the grid renders an
  * empty <h2> and a link with no accessible name.
+ *
+ * Emptiness is tested against the raw post_title, not get_the_title(), because
+ * core prefixes protected and private posts ("Protected: %s"). Testing the
+ * filtered title would see that prefix as content and emit "Protected: " with
+ * a dangling colon. The prefix is reapplied to the fallback instead.
+ *
+ * No date is included: every call site already renders the date in a sibling
+ * <time>, so putting it here made the link's accessible name say it twice.
  *
  * @param int|WP_Post|null $post Optional. Post ID or object. Default global $post.
  * @return string Plain-text title, unescaped.
  */
 function lumen_get_display_title($post = null) {
-    $title = wp_strip_all_tags(get_the_title($post));
+    $post_object = get_post($post);
 
-    if ('' !== trim($title)) {
-        return $title;
+    if (!$post_object) {
+        return __('Untitled', 'lumen');
     }
 
-    $date = get_the_date('', $post);
+    $raw = trim(wp_strip_all_tags(get_post_field('post_title', $post_object)));
 
-    if ($date) {
-        /* translators: %s: Post publication date. */
-        return sprintf(__('Untitled, %s', 'lumen'), $date);
+    if ('' !== $raw) {
+        return wp_strip_all_tags(get_the_title($post_object));
     }
 
-    return __('Untitled', 'lumen');
+    $fallback = __('Untitled', 'lumen');
+
+    // Mirror core's get_the_title() prefixing so an untitled protected post
+    // still reads "Protected: Untitled".
+    if (post_password_required($post_object)) {
+        $format = apply_filters('protected_title_format', __('Protected: %s'), $post_object);
+
+        return wp_strip_all_tags(sprintf($format, $fallback));
+    }
+
+    if ('private' === get_post_status($post_object)) {
+        $format = apply_filters('private_title_format', __('Private: %s'), $post_object);
+
+        return wp_strip_all_tags(sprintf($format, $fallback));
+    }
+
+    return $fallback;
+}
+
+/**
+ * Relative luminance of a hex colour, per WCAG 2.1.
+ *
+ * @param string $hex Three or six digit hex colour, with leading #.
+ * @return float Luminance between 0 and 1.
+ */
+function lumen_relative_luminance($hex) {
+    $hex = ltrim((string) $hex, '#');
+
+    if (3 === strlen($hex)) {
+        $hex = $hex[0] . $hex[0] . $hex[1] . $hex[1] . $hex[2] . $hex[2];
+    }
+
+    $channels = array(
+        hexdec(substr($hex, 0, 2)),
+        hexdec(substr($hex, 2, 2)),
+        hexdec(substr($hex, 4, 2)),
+    );
+
+    $weights = array(0.2126, 0.7152, 0.0722);
+    $luminance = 0.0;
+
+    foreach ($channels as $index => $value) {
+        $channel = $value / 255;
+        $channel = ($channel <= 0.03928)
+            ? $channel / 12.92
+            : pow(($channel + 0.055) / 1.055, 2.4);
+
+        $luminance += $channel * $weights[$index];
+    }
+
+    return $luminance;
+}
+
+/**
+ * WCAG contrast ratio between two hex colours.
+ *
+ * @param string $one Hex colour.
+ * @param string $two Hex colour.
+ * @return float Ratio between 1 and 21.
+ */
+function lumen_contrast_ratio($one, $two) {
+    $a = lumen_relative_luminance($one);
+    $b = lumen_relative_luminance($two);
+
+    $lighter = max($a, $b);
+    $darker  = min($a, $b);
+
+    return ($lighter + 0.05) / ($darker + 0.05);
+}
+
+/**
+ * Lighten a colour until it meets a contrast ratio against a background.
+ *
+ * The accent colour drives the site title, link hovers, focus outlines and the
+ * skip link. A dark accent picked in the Customizer would make all of those
+ * unreadable on the dark background, and a colour picker cannot prevent it, so
+ * the value is nudged toward white until it is legible.
+ *
+ * @param string $hex        Hex colour to adjust.
+ * @param string $background Hex colour it will sit on.
+ * @param float  $minimum    Target contrast ratio. Default 4.5 (WCAG AA).
+ * @return string Hex colour meeting the ratio, or white if it cannot.
+ */
+function lumen_ensure_contrast($hex, $background, $minimum = 4.5) {
+    if (lumen_contrast_ratio($hex, $background) >= $minimum) {
+        return $hex;
+    }
+
+    $base = ltrim((string) $hex, '#');
+
+    if (3 === strlen($base)) {
+        $base = $base[0] . $base[0] . $base[1] . $base[1] . $base[2] . $base[2];
+    }
+
+    $red   = hexdec(substr($base, 0, 2));
+    $green = hexdec(substr($base, 2, 2));
+    $blue  = hexdec(substr($base, 4, 2));
+
+    // Mix toward white in twentieths, keeping the hue as long as possible.
+    for ($step = 1; $step <= 20; $step++) {
+        $mix = $step / 20;
+
+        $candidate = sprintf(
+            '#%02x%02x%02x',
+            (int) round($red + (255 - $red) * $mix),
+            (int) round($green + (255 - $green) * $mix),
+            (int) round($blue + (255 - $blue) * $mix)
+        );
+
+        if (lumen_contrast_ratio($candidate, $background) >= $minimum) {
+            return $candidate;
+        }
+    }
+
+    return '#ffffff';
 }
 
 /**

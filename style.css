@@ -3,14 +3,14 @@ Theme Name: Lumen
 Author: Donncha O Caoimh
 Author URI: https://odd.blog/
 Description: A dark, gallery-first photography theme for photoblogs. Features a responsive CSS Grid layout, featured image hover overlays, and a dedicated section for text-only posts at the bottom of archive pages.
-Version: 1.0.1
+Version: 1.0.2
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
 License: GNU General Public License v2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 Text Domain: lumen
-Tags: blog, photography, one-column, grid-layout, custom-colors, custom-menu, featured-images, translation-ready, sticky-post, threaded-comments
+Tags: blog, photography, one-column, grid-layout, custom-colors, custom-menu, featured-images, editor-style, translation-ready, sticky-post, threaded-comments
 */
 
 /* ========== CSS RESET & BASE ========== */
@@ -340,6 +340,8 @@ img {
 
 .nav-next {
     text-align: right;
+    /* Keeps "Next" on the right when there is no previous post to balance it. */
+    margin-left: auto;
 }
 
 .nav-label {
@@ -391,6 +393,24 @@ img {
     background: var(--bg-secondary);
     color: var(--accent);
     border-color: var(--border-hover);
+}
+
+/* ========== MULTIPAGE POST LINKS ========== */
+/* wp_link_pages() output, kept separate from .pagination so it does not
+   inherit the pager's bordered boxes. */
+.page-links {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 2rem;
+}
+
+.page-links a,
+.page-links > span {
+    margin-left: 0.5rem;
+}
+
+.single-content .page-links a {
+    border-bottom: 0;
 }
 
 /* ========== 404 & NO POSTS ========== */
@@ -571,6 +591,33 @@ img {
 
 .wp-caption img {
     border-radius: 4px;
+}
+
+/* Declaring html5 'gallery' support suppresses core's inline #gallery-N
+   styles, so a [gallery] shortcode has no layout of its own without this. */
+.gallery {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(3, 1fr);
+    margin: 0 0 2rem;
+}
+
+.gallery-columns-1 { grid-template-columns: 1fr; }
+.gallery-columns-2 { grid-template-columns: repeat(2, 1fr); }
+.gallery-columns-4 { grid-template-columns: repeat(4, 1fr); }
+.gallery-columns-5 { grid-template-columns: repeat(5, 1fr); }
+.gallery-columns-6 { grid-template-columns: repeat(6, 1fr); }
+.gallery-columns-7 { grid-template-columns: repeat(7, 1fr); }
+.gallery-columns-8 { grid-template-columns: repeat(8, 1fr); }
+.gallery-columns-9 { grid-template-columns: repeat(9, 1fr); }
+
+.gallery-item {
+    margin: 0;
+}
+
+.gallery-icon img {
+    border-radius: 4px;
+    width: 100%;
 }
 
 .wp-caption-text,
