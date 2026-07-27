@@ -18,10 +18,10 @@
     <?php endif; ?>
 
     <?php
-    $description = get_bloginfo('description', 'display');
-    if ($description || is_customize_preview()) :
+    $lumen_description = get_bloginfo('description');
+    if ($lumen_description || is_customize_preview()) :
     ?>
-        <p class="site-description"><?php echo esc_html($description); ?></p>
+        <p class="site-description"><?php echo esc_html($lumen_description); ?></p>
     <?php endif; ?>
 
     <?php if (has_nav_menu('primary')) : ?>

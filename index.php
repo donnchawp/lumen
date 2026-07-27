@@ -10,9 +10,13 @@ get_header();
 
 <main id="primary" class="site-main">
 
-<?php if (is_home() && !is_front_page()) : ?>
+<?php
+$lumen_posts_page = (int) get_option('page_for_posts');
+
+if (is_home() && !is_front_page() && $lumen_posts_page) :
+?>
     <header class="archive-header">
-        <h1 class="archive-title"><?php echo esc_html(get_the_title(get_option('page_for_posts'))); ?></h1>
+        <h1 class="archive-title"><?php echo esc_html(get_the_title($lumen_posts_page)); ?></h1>
     </header>
 <?php endif; ?>
 
