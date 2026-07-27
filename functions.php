@@ -1,30 +1,42 @@
 <?php
 /**
  * Lumen Theme Functions
+ *
+ * @package Lumen
  */
 
 if (!defined('ABSPATH')) {
     exit;
 }
 
+if (!isset($content_width)) {
+    $content_width = 700;
+}
+
 /**
  * Theme Setup
  */
 function lumen_setup() {
+    // Translations. Bundled .mo files live in /languages.
+    load_theme_textdomain('lumen', get_template_directory() . '/languages');
+
     // Add theme support for featured images
     add_theme_support('post-thumbnails');
-    
+
     // Set default featured image size
     set_post_thumbnail_size(600, 450, true);
-    
+
     // Add custom image size for grid
     add_image_size('lumen-grid', 800, 600, true);
     add_image_size('lumen-grid-portrait', 600, 800, true);
     add_image_size('lumen-single', 1400, 900, false);
-    
+
     // Add theme support for title tag
     add_theme_support('title-tag');
-    
+
+    // RSS feed links in <head>
+    add_theme_support('automatic-feed-links');
+
     // HTML5 support
     add_theme_support('html5', array(
         'search-form',
@@ -35,10 +47,16 @@ function lumen_setup() {
         'script',
         'style',
     ));
-    
+
     // Add theme support for responsive embeds
     add_theme_support('responsive-embeds');
-    
+
+    // Block editor: wide and full alignments.
+    // No add_editor_style() here on purpose. style.css carries a universal
+    // reset and overflow-x:hidden on body, which are not safe to load into the
+    // editor. Matching editor styles need their own scoped stylesheet.
+    add_theme_support('align-wide');
+
     // Register navigation menu
     register_nav_menus(array(
         'primary' => __('Primary Menu', 'lumen'),
@@ -57,48 +75,35 @@ function lumen_scripts() {
         array(),
         wp_get_theme()->get('Version')
     );
-    
-    // Theme JS (empty by default, ready for future use)
-    wp_enqueue_script(
-        'lumen-script',
-        get_template_directory_uri() . '/js/lumen.js',
-        array(),
-        wp_get_theme()->get('Version'),
-        true
-    );
+
+    // Accent colour from the Customizer, applied as a custom property override.
+    $accent = get_theme_mod('lumen_accent_color', '#ffffff');
+    $accent = sanitize_hex_color($accent);
+
+    if ($accent) {
+        wp_add_inline_style(
+            'lumen-style',
+            ':root{--accent:' . $accent . ';}'
+        );
+    }
+
+    // Threaded comment replies
+    if (is_singular() && comments_open() && get_option('thread_comments')) {
+        wp_enqueue_script('comment-reply');
+    }
 }
 add_action('wp_enqueue_scripts', 'lumen_scripts');
-
-/**
- * Custom Excerpt Length
- */
-function lumen_excerpt_length($length) {
-    return 20;
-}
-add_filter('excerpt_length', 'lumen_excerpt_length', 999);
-
-/**
- * Add custom class to text-only posts in the loop
- */
-function lumen_post_classes($classes) {
-    if (!has_post_thumbnail()) {
-        $classes[] = 'text-only-post';
-    }
-    return $classes;
-}
-add_filter('post_class', 'lumen_post_classes');
 
 /**
  * Customizer: Add theme options
  */
 function lumen_customize_register($wp_customize) {
-    // Site Title Color (already handled by CSS but good to expose)
     $wp_customize->add_setting('lumen_accent_color', array(
         'default'           => '#ffffff',
         'sanitize_callback' => 'sanitize_hex_color',
         'transport'         => 'refresh',
     ));
-    
+
     $wp_customize->add_control(new WP_Customize_Color_Control($wp_customize, 'lumen_accent_color', array(
         'label'   => __('Accent Color', 'lumen'),
         'section' => 'colors',
@@ -107,12 +112,40 @@ function lumen_customize_register($wp_customize) {
 add_action('customize_register', 'lumen_customize_register');
 
 /**
- * Add async/defer to scripts
+ * Display title for a post, falling back to the date when the title is empty.
+ *
+ * Photoblog posts are often untitled. Without a fallback the grid renders an
+ * empty <h2> and a link with no accessible name.
+ *
+ * @param int|WP_Post|null $post Optional. Post ID or object. Default global $post.
+ * @return string Plain-text title, unescaped.
  */
-function lumen_script_loader_tag($tag, $handle) {
-    if ('lumen-script' === $handle) {
-        return str_replace(' src', ' defer src', $tag);
+function lumen_get_display_title($post = null) {
+    $title = wp_strip_all_tags(get_the_title($post));
+
+    if ('' !== trim($title)) {
+        return $title;
     }
-    return $tag;
+
+    $date = get_the_date('', $post);
+
+    if ($date) {
+        /* translators: %s: Post publication date. */
+        return sprintf(__('Untitled, %s', 'lumen'), $date);
+    }
+
+    return __('Untitled', 'lumen');
 }
-add_filter('script_loader_tag', 'lumen_script_loader_tag', 10, 2);
+
+/**
+ * Whether a post should appear in the photo grid.
+ *
+ * Password-protected posts are excluded: on a photoblog the featured image is
+ * the content being protected, so it must not be browsable in the grid.
+ *
+ * @param int|WP_Post|null $post Optional. Post ID or object. Default global $post.
+ * @return bool
+ */
+function lumen_is_photo_post($post = null) {
+    return has_post_thumbnail($post) && !post_password_required($post);
+}
