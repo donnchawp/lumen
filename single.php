@@ -50,6 +50,19 @@ get_header();
     </div>
 
     <?php
+    // Suppressed entirely when the post has no tags, so an empty container does
+    // not consume its bottom margin. the_tags() escapes each tag name. The
+    // separator is a single space: flex gap governs the real spacing, and a
+    // whitespace-only anonymous flex item is not rendered, so the space costs
+    // nothing visually while keeping the names apart with CSS disabled.
+    if (has_tag()) :
+    ?>
+        <nav class="post-tags" aria-label="<?php esc_attr_e('Tags', 'lumen'); ?>">
+            <?php the_tags('', ' ', ''); ?>
+        </nav>
+    <?php endif; ?>
+
+    <?php
     $lumen_prev = get_previous_post();
     $lumen_next = get_next_post();
 

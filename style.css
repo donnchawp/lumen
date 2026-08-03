@@ -3,7 +3,7 @@ Theme Name: Lumen
 Author: Donncha O Caoimh
 Author URI: https://odd.blog/
 Description: A dark, gallery-first photography theme for photoblogs. Features a responsive CSS Grid layout, featured image hover overlays, and a dedicated section for text-only posts at the bottom of archive pages.
-Version: 1.0.2
+Version: 1.1.0
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
@@ -356,6 +356,37 @@ img {
 .nav-title {
     color: var(--text-primary);
     font-size: 0.95rem;
+}
+
+/* ========== POST TAGS ========== */
+/* Sibling of .single-content rather than a child, so the post body and its
+   metadata stay separate. Repeats max-width and padding the way
+   .post-navigation does. */
+.post-tags {
+    max-width: 700px;
+    margin: 0 auto 3rem;
+    padding: 0 1.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.post-tags a {
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    letter-spacing: 0.05em;
+    padding: 0.35rem 0.75rem;
+    transition: border-color var(--transition), color var(--transition);
+}
+
+/* focus-visible shares the hover treatment: 1.0.2 restored the keyboard focus
+   ring on gallery links, and a hover-only affordance here would undo that. */
+.post-tags a:hover,
+.post-tags a:focus-visible {
+    border-color: var(--border-hover);
+    color: var(--accent);
 }
 
 /* ========== FOOTER ========== */

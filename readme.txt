@@ -3,7 +3,7 @@ Contributors: donncha
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 1.0.2
+Stable tag: 1.1.0
 License: GNU General Public License v2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -51,6 +51,9 @@ Lumen is distributed under the terms of the GNU GPL version 2 or later.
 This theme bundles no third-party assets, fonts, images, or libraries. It uses the system font stack via CSS and ships no JavaScript of its own.
 
 == Changelog ==
+
+= 1.1.0 =
+* Single posts now list their tags below the content, as linked pills. Posts with no tags render nothing.
 
 = 1.0.2 =
 * Portrait cards no longer stretch their landscape neighbours. Grid items stretch by default and stretch overrides aspect-ratio, so one portrait photo was forcing every landscape photo in the same row to a 3:4 crop.
