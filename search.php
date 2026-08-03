@@ -5,6 +5,10 @@
  * @package Lumen
  */
 
+if (!defined('ABSPATH')) {
+    exit;
+}
+
 get_header();
 
 // Needed for the result count below.
@@ -21,7 +25,7 @@ global $wp_query;
             printf(
                 /* translators: %s: Search query. */
                 esc_html__('Search results for %s', 'lumen'),
-                '<span class="search-term">' . esc_html(get_search_query()) . '</span>'
+                '<span class="search-term">' . esc_html(get_search_query(false)) . '</span>'
             );
             ?>
         </h1>
@@ -48,7 +52,7 @@ global $wp_query;
             printf(
                 /* translators: %s: Search query. */
                 esc_html__('No results for %s', 'lumen'),
-                '<span class="search-term">' . esc_html(get_search_query()) . '</span>'
+                '<span class="search-term">' . esc_html(get_search_query(false)) . '</span>'
             );
             ?>
         </h1>
