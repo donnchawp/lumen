@@ -3,7 +3,7 @@ Contributors: donncha
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 1.1.0
+Stable tag: 1.2.0
 License: GNU General Public License v2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -51,6 +51,10 @@ Lumen is distributed under the terms of the GNU GPL version 2 or later.
 This theme bundles no third-party assets, fonts, images, or libraries. It uses the system font stack via CSS and ships no JavaScript of its own.
 
 == Changelog ==
+
+= 1.2.0 =
+* Featured images are no longer stretched to fill the page. The old rule forced every one of them to the full 1304px content box, so a portrait frame served at 607px was upscaled by 115% and older narrow files fared worse. They now render at their own size, centred.
+* Images in post content render at their own width instead of being shrunk to the 700px reading column, centred on the page and capped at the same width the featured image uses. Text stays in the column. Floated images and explicit wide/full alignments are unchanged, and below 1140px nothing breaks out.
 
 = 1.1.0 =
 * Single posts now list their tags below the content, as linked pills. Posts with no tags render nothing.

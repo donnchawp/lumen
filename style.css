@@ -3,7 +3,7 @@ Theme Name: Lumen
 Author: Donncha O Caoimh
 Author URI: https://odd.blog/
 Description: A dark, gallery-first photography theme for photoblogs. Features a responsive CSS Grid layout, featured image hover overlays, and a dedicated section for text-only posts at the bottom of archive pages.
-Version: 1.1.0
+Version: 1.2.0
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
@@ -295,8 +295,13 @@ img {
     padding: 0 1.5rem;
 }
 
+/* No width:100% here. It stretched every featured image to fill the 1304px
+   content box, so anything narrower was upscaled: a portrait frame served at
+   607px was blown up by 115%. The base img rule caps width at the container,
+   and auto margins centre whatever is narrower. */
 .single-featured-image img {
-    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
     border-radius: 4px;
 }
 
@@ -756,6 +761,49 @@ img {
 
 .single-content img {
     border-radius: 4px;
+}
+
+/* Images render at their own width rather than being shrunk to the 700px
+   reading column, centred on the page and capped at the ceiling the featured
+   image uses.
+
+   margin-left:50% plus a half-width translate is what centres a box wider than
+   its parent: margin:auto collapses to 0 once the child exceeds the container,
+   so it cannot centre an overflowing image.
+
+   The figure is given the full breakout width rather than being sized from its
+   image. Intrinsic sizing was tried first and does not work here: the base
+   img rule sets max-width:100%, and a percentage max-width makes the image
+   contribute nothing to its parent's intrinsic width, so width:min-content
+   collapsed the figure to 0. width:fit-content failed differently, clamping to
+   the space left after margin-left:50% had taken half the column, giving 326px.
+   A definite width avoids both traps. The image then sits at its own size
+   inside that box, centred by auto margins, and the caption centres under it
+   on the text-align rule the theme already applies to figcaption.
+
+   Gated at 1140px to match .alignwide above: below that the column is already
+   close to the viewport width, so there is nothing to break out of. Floats and
+   the explicit wide/full alignments keep their own behaviour. */
+@media (min-width: 1140px) {
+    .single-content > figure:not(.alignleft):not(.alignright):not(.alignwide):not(.alignfull),
+    .single-content > .wp-block-image:not(.alignleft):not(.alignright):not(.alignwide):not(.alignfull) {
+        width: min(1400px, 100vw - 3rem);
+        margin-left: 50%;
+        transform: translateX(-50%);
+    }
+
+    .single-content > figure:not(.alignleft):not(.alignright):not(.alignwide):not(.alignfull) > img,
+    .single-content > .wp-block-image:not(.alignleft):not(.alignright):not(.alignwide):not(.alignfull) > img {
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .single-content > img:not(.alignleft):not(.alignright),
+    .single-content > p > img:not(.alignleft):not(.alignright) {
+        max-width: min(1400px, 100vw - 3rem);
+        margin-left: 50%;
+        transform: translateX(-50%);
+    }
 }
 
 .single-content hr {
