@@ -3,7 +3,7 @@ Contributors: donncha
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 1.2.0
+Stable tag: 1.2.1
 License: GNU General Public License v2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -51,6 +51,15 @@ Lumen is distributed under the terms of the GNU GPL version 2 or later.
 This theme bundles no third-party assets, fonts, images, or libraries. It uses the system font stack via CSS and ships no JavaScript of its own.
 
 == Changelog ==
+
+= 1.2.1 =
+* The image breakout added in 1.2.0 was matching any figure, so unaligned tables, embeds, pullquotes, audio, video and galleries were stretched out of the reading column too. It now applies to image figures and captions only.
+* Images in post content line up with the featured image above them. They were capped 96px wider than it, which ate the page gutter.
+* Wide and full alignments work on images for the first time. The block editor writes a wide image as figure class="wp-block-image alignwide", which collided with the theme's own figure margin rule at equal specificity and lost, so the alignment was silently dropped.
+* Full-width content no longer scrolls the page sideways by a few pixels. It is sized in vw, which counts the scrollbar, and the clipping meant to hide that was not taking effect.
+* The first photo on a grid page is no longer lazy-loaded and now carries fetchpriority="high". Because the grid renders outside the loop, WordPress could not tell which images were on screen and lazy-loaded all of them, including the largest one above the fold.
+* Grid pages prime the thumbnail cache in one pass. Query count was scaling with the number of photos, about two extra queries per card.
+* editor-style.css is loaded in the block editor at last. add_editor_style() only declares the classic editor feature; the block editor needs the editor-styles theme support, which was missing, so the file shipped in 1.0.2 had never been used.
 
 = 1.2.0 =
 * Featured images are no longer stretched to fill the page. The old rule forced every one of them to the full 1304px content box, so a portrait frame served at 607px was upscaled by 115% and older narrow files fared worse. They now render at their own size, centred.

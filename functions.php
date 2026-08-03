@@ -54,7 +54,16 @@ function lumen_setup() {
     // Block editor: wide and full alignments, previewed with a dedicated
     // stylesheet. style.css is not used here: its universal reset and
     // overflow-x:hidden on body would break the editing surface.
+    //
+    // Both supports are required. add_editor_style() declares 'editor-style'
+    // (singular), which is the classic TinyMCE feature; the block editor loads
+    // theme styles only when 'editor-styles' (plural) is declared. Without the
+    // plural one the stylesheet below is never loaded and this whole block is
+    // inert. dark-editor-style tells the editor its canvas is dark so it
+    // adjusts its own UI accordingly.
     add_theme_support('align-wide');
+    add_theme_support('editor-styles');
+    add_theme_support('dark-editor-style');
     add_editor_style('editor-style.css');
 
     // Register navigation menu

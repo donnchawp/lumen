@@ -33,11 +33,36 @@ while (have_posts()) {
         $lumen_text_posts[] = $post;
     }
 }
+
+// Rendering the cards below happens outside the loop, which silently opts this
+// file out of two core behaviours that are keyed on in_the_loop():
+//
+//   1. get_the_post_thumbnail() primes the whole page's attachment posts and
+//      metadata in one pass, but only when in_the_loop() is true. Without this
+//      call each card pays an uncached get_post() on its attachment plus an
+//      uncached _wp_attachment_metadata read, so query count scales with the
+//      number of photos rather than staying flat.
+//   2. wp_get_loading_optimization_attributes() decides whether an image is
+//      likely in the viewport using in_the_loop() && is_main_query(), with a
+//      fallback on $wp_query->before_loop. Both are false once the partition
+//      loop above has exhausted the query, so every image would default to
+//      loading="lazy" with no fetchpriority, including the LCP image. The
+//      attributes are therefore set explicitly at the the_post_thumbnail()
+//      call below.
+//
+// Anything else added here that relies on loop state needs the same treatment.
+update_post_thumbnail_cache();
 ?>
 
 <?php if (!empty($lumen_photo_posts)) : ?>
+    <?php
+    // How many leading images core would exclude from lazy-loading in a normal
+    // loop. Read from core rather than hardcoded, so a site filtering the
+    // threshold still gets what it asked for.
+    $lumen_eager_count = wp_omit_loading_attr_threshold();
+    ?>
     <div class="photo-grid">
-        <?php foreach ($lumen_photo_posts as $post) : setup_postdata($post); ?>
+        <?php foreach ($lumen_photo_posts as $lumen_index => $post) : setup_postdata($post); ?>
             <?php
             // Choose orientation-based image size.
             $lumen_metadata = wp_get_attachment_metadata(get_post_thumbnail_id());
@@ -55,14 +80,30 @@ while (have_posts()) {
                 $lumen_card_class .= ' photo-card--portrait';
             }
             ?>
+            <?php
+            $lumen_image_attr = array(
+                'sizes' => '(max-width: 480px) 100vw, (max-width: 768px) 50vw, 400px',
+            );
+
+            // Core's viewport heuristic cannot run here (see the note above the
+            // grid), so state the answer directly. loading => false omits the
+            // attribute rather than emitting loading="", which is what core
+            // does for leading images; anything other than 'lazy' also marks
+            // the image as in-viewport for the rest of its calculation.
+            if ($lumen_index < $lumen_eager_count) {
+                $lumen_image_attr['loading'] = false;
+
+                if (0 === $lumen_index) {
+                    $lumen_image_attr['fetchpriority'] = 'high';
+                }
+            }
+            ?>
             <article id="post-<?php the_ID(); ?>" <?php post_class($lumen_card_class); ?>>
                 <a href="<?php the_permalink(); ?>">
                     <?php
                     // No alt is passed: core uses the alt text set in the Media
                     // Library, which is more descriptive than the post title.
-                    the_post_thumbnail($lumen_size, array(
-                        'sizes' => '(max-width: 480px) 100vw, (max-width: 768px) 50vw, 400px',
-                    ));
+                    the_post_thumbnail($lumen_size, $lumen_image_attr);
                     ?>
                     <div class="photo-card-overlay">
                         <h2 class="photo-card-title"><?php echo esc_html(lumen_get_display_title()); ?></h2>
