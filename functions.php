@@ -9,15 +9,23 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-if (!isset($content_width)) {
-    $content_width = 700;
-}
-
 /**
  * Theme Setup
  */
 function lumen_setup() {
-    // Translations. Bundled .mo files live in /languages.
+    global $content_width;
+
+    // Width of the reading column, which is also what oEmbed asks providers for.
+    // Embeds render in the column rather than at the wider image breakout, so
+    // this stays at the column width. Set here rather than at file scope so a
+    // child theme can override it on the same hook.
+    if (!isset($content_width)) {
+        $content_width = 700;
+    }
+
+    // Translations. No .mo files ship with the theme; this lets a translation
+    // dropped into wp-content/languages/themes, or into a /languages directory
+    // added later, be picked up.
     load_theme_textdomain('lumen', get_template_directory() . '/languages');
 
     // Add theme support for featured images
@@ -89,7 +97,7 @@ function lumen_scripts() {
     $accent = sanitize_hex_color(get_theme_mod('lumen_accent_color', '#ffffff'));
 
     if ($accent) {
-        $accent = lumen_ensure_contrast($accent, '#0a0a0a');
+        $accent = lumen_ensure_contrast($accent, lumen_accent_background());
 
         wp_add_inline_style(
             'lumen-style',
@@ -121,6 +129,27 @@ function lumen_customize_register($wp_customize) {
     )));
 }
 add_action('customize_register', 'lumen_customize_register');
+
+/**
+ * The background the accent colour is checked for contrast against.
+ *
+ * The accent is painted on two backgrounds: --bg-primary (#0a0a0a) for the site
+ * title, links and focus outlines, and the lighter --bg-secondary (#111111)
+ * behind the current pagination item, the focused skip link, and note rows on
+ * hover. Checking against the lighter of the two satisfies both, since a light
+ * accent only gains contrast on a darker background. Checking against #0a0a0a
+ * instead would let a colour land at 4.5:1 there and 4.29:1 on #111111.
+ *
+ * These values also live in style.css as custom properties. Kept in a function
+ * so the duplication has one obvious place to update, because nothing errors if
+ * the two drift apart, the contrast maths just quietly stops matching what is
+ * rendered.
+ *
+ * @return string Hex colour, matching --bg-secondary in style.css.
+ */
+function lumen_accent_background() {
+    return '#111111';
+}
 
 /**
  * Display title for a post, falling back to "Untitled" when there is none.
@@ -156,13 +185,21 @@ function lumen_get_display_title($post = null) {
 
     // Mirror core's get_the_title() prefixing so an untitled protected post
     // still reads "Protected: Untitled".
-    if (post_password_required($post_object)) {
+    //
+    // The conditions match core exactly, including is_admin(): core prefixes on
+    // whether the post HAS a password, not on whether the visitor has entered
+    // it, and it does not prefix at all in the admin. Testing
+    // post_password_required() instead would drop the prefix the moment the
+    // password was accepted, so on a page listing two protected posts sharing
+    // one password the titled one would still read "Protected: Sunset" while
+    // the untitled one fell back to a bare "Untitled".
+    if (!is_admin() && !empty($post_object->post_password)) {
         $format = apply_filters('protected_title_format', __('Protected: %s'), $post_object);
 
         return wp_strip_all_tags(sprintf($format, $fallback));
     }
 
-    if ('private' === get_post_status($post_object)) {
+    if (!is_admin() && 'private' === get_post_status($post_object)) {
         $format = apply_filters('private_title_format', __('Private: %s'), $post_object);
 
         return wp_strip_all_tags(sprintf($format, $fallback));
@@ -223,17 +260,22 @@ function lumen_contrast_ratio($one, $two) {
 }
 
 /**
- * Lighten a colour until it meets a contrast ratio against a background.
+ * Lighten a colour until it meets a contrast ratio against a dark background.
  *
  * The accent colour drives the site title, link hovers, focus outlines and the
  * skip link. A dark accent picked in the Customizer would make all of those
  * unreadable on the dark background, and a colour picker cannot prevent it, so
  * the value is nudged toward white until it is legible.
  *
+ * Only ever lightens, so $background must be dark. Against a light background
+ * every step makes contrast worse and the return value is white, which is the
+ * least readable answer available rather than a safe fallback. The theme calls
+ * this with lumen_accent_background() and nothing else.
+ *
  * @param string $hex        Hex colour to adjust.
- * @param string $background Hex colour it will sit on.
+ * @param string $background Hex colour it will sit on. Must be dark.
  * @param float  $minimum    Target contrast ratio. Default 4.5 (WCAG AA).
- * @return string Hex colour meeting the ratio, or white if it cannot.
+ * @return string Hex colour meeting the ratio against a dark background.
  */
 function lumen_ensure_contrast($hex, $background, $minimum = 4.5) {
     if (lumen_contrast_ratio($hex, $background) >= $minimum) {
@@ -266,6 +308,9 @@ function lumen_ensure_contrast($hex, $background, $minimum = 4.5) {
         }
     }
 
+    // Not reached against a dark background: the last step mixes to exactly
+    // white, which clears any ratio up to 21. Kept so the function still returns
+    // a colour rather than null if it is ever called with a light one.
     return '#ffffff';
 }
 
@@ -280,4 +325,35 @@ function lumen_ensure_contrast($hex, $background, $minimum = 4.5) {
  */
 function lumen_is_photo_post($post = null) {
     return has_post_thumbnail($post) && !post_password_required($post);
+}
+
+/**
+ * Which registered image size a post's featured image should use in the grid.
+ *
+ * Portrait photos get a portrait crop and a taller cell; everything else gets
+ * the landscape crop. Deciding that is data logic rather than markup, and it
+ * belongs beside lumen_is_photo_post() which answers the related question of
+ * whether a post reaches the grid at all.
+ *
+ * The 1.2 threshold, rather than a plain height > width, keeps nearly square
+ * photos in the landscape cell where they crop better.
+ *
+ * @param int|WP_Post|null $post Optional. Post ID or object. Default global $post.
+ * @return array {
+ *     @type string $0 Registered image size name.
+ *     @type string $1 Card class, including the portrait modifier when it applies.
+ * }
+ */
+function lumen_get_grid_image_size($post = null) {
+    $metadata = wp_get_attachment_metadata(get_post_thumbnail_id($post));
+
+    $is_portrait = !empty($metadata['height'])
+        && !empty($metadata['width'])
+        && ($metadata['height'] / $metadata['width']) > 1.2;
+
+    if ($is_portrait) {
+        return array('lumen-grid-portrait', 'photo-card photo-card--portrait');
+    }
+
+    return array('lumen-grid', 'photo-card');
 }

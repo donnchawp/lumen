@@ -15,7 +15,7 @@ if (!defined('ABSPATH')) {
 get_header();
 ?>
 
-<main id="primary" class="site-main">
+<main id="primary" class="site-main" tabindex="-1">
 
     <div class="no-posts">
         <h1><?php esc_html_e('Page not found', 'lumen'); ?></h1>

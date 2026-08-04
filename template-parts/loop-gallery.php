@@ -64,25 +64,17 @@ update_post_thumbnail_cache();
     <div class="photo-grid">
         <?php foreach ($lumen_photo_posts as $lumen_index => $post) : setup_postdata($post); ?>
             <?php
-            // Choose orientation-based image size.
-            $lumen_metadata = wp_get_attachment_metadata(get_post_thumbnail_id());
-            $lumen_size     = 'lumen-grid';
+            list($lumen_size, $lumen_card_class) = lumen_get_grid_image_size();
 
-            if (!empty($lumen_metadata['height']) && !empty($lumen_metadata['width'])) {
-                if (($lumen_metadata['height'] / $lumen_metadata['width']) > 1.2) {
-                    $lumen_size = 'lumen-grid-portrait';
-                }
-            }
-
-            $lumen_card_class = 'photo-card';
-
-            if ('lumen-grid-portrait' === $lumen_size) {
-                $lumen_card_class .= ' photo-card--portrait';
-            }
-            ?>
-            <?php
+            // Breakpoints follow where the grid actually changes column count,
+            // which is not where the CSS breakpoints are. Below 564px the grid
+            // is one column: auto-fill with minmax(250px, 1fr) and a 1rem gap
+            // needs 516px of content box for a second column, and the container
+            // is the viewport less 3rem of padding. Advertising 50vw from 481px,
+            // as this did, told the browser to fetch a ~240px file for a slot
+            // 433px wide.
             $lumen_image_attr = array(
-                'sizes' => '(max-width: 480px) 100vw, (max-width: 768px) 50vw, 400px',
+                'sizes' => '(max-width: 564px) 100vw, (max-width: 768px) 50vw, 400px',
             );
 
             // Core's viewport heuristic cannot run here (see the note above the

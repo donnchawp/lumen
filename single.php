@@ -12,9 +12,9 @@ if (!defined('ABSPATH')) {
 get_header();
 ?>
 
-<?php while (have_posts()) : the_post(); ?>
+<main id="primary" class="site-main" tabindex="-1">
 
-<main id="primary" class="site-main">
+<?php while (have_posts()) : the_post(); ?>
 
     <header class="single-header">
         <h1 class="single-title"><?php echo esc_html(lumen_get_display_title()); ?></h1>
@@ -105,8 +105,8 @@ get_header();
     }
     ?>
 
-</main>
-
 <?php endwhile; ?>
+
+</main>
 
 <?php get_footer(); ?>

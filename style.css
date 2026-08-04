@@ -3,7 +3,7 @@ Theme Name: Lumen
 Author: Donncha O Caoimh
 Author URI: https://odd.blog/
 Description: A dark, gallery-first photography theme for photoblogs. Features a responsive CSS Grid layout, featured image hover overlays, and a dedicated section for text-only posts at the bottom of archive pages.
-Version: 1.2.1
+Version: 1.2.4
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
@@ -184,7 +184,10 @@ img {
     left: 0;
     right: 0;
     padding: 3rem 1.5rem 1.5rem;
-    background: linear-gradient(transparent, rgba(0,0,0,0.85));
+    /* 0.9, not 0.85. The overlay composites over arbitrary photo data, and the
+       date below is --text-secondary. Over a white frame, 0.85 leaves it at
+       4.27:1, under AA; 0.9 brings it to 4.96:1. */
+    background: linear-gradient(transparent, rgba(0,0,0,0.9));
     opacity: 0;
     transition: opacity var(--transition);
 }
@@ -340,19 +343,46 @@ img {
     margin: 0 auto 4rem;
     padding: 0 1.5rem;
     display: flex;
-    justify-content: space-between;
     gap: 1rem;
 }
 
-.nav-previous,
-.nav-next {
+/* Scoped to .post-navigation. the_comments_navigation() emits .nav-previous and
+   .nav-next too, inside a .comment-navigation that is not a flex container, so
+   unscoped rules leaked onto it and right-aligned its "Newer comments" link. */
+.post-navigation .nav-previous,
+.post-navigation .nav-next {
     flex: 1;
 }
 
-.nav-next {
+/* flex:1 above already makes a lone item fill the row, so justify-content on
+   the parent and margin-left:auto here would both have nothing to distribute.
+   text-align is what actually holds "Next" against the right edge. */
+.post-navigation .nav-next {
     text-align: right;
-    /* Keeps "Next" on the right when there is no previous post to balance it. */
-    margin-left: auto;
+}
+
+.comment-navigation {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.comment-navigation .nav-previous,
+.comment-navigation .nav-next {
+    flex: 1;
+    font-size: 0.85rem;
+}
+
+.comment-navigation .nav-next {
+    text-align: right;
+}
+
+.comment-navigation a {
+    color: var(--text-secondary);
+}
+
+.comment-navigation a:hover {
+    color: var(--accent);
 }
 
 .nav-label {
@@ -611,16 +641,12 @@ img {
 /* Only widen once the viewport can actually hold it, otherwise the negative
    margins push content off-screen.
 
-   The figure.* selectors are not redundant. The block editor emits a wide image
-   as <figure class="wp-block-image alignwide">, which also matches
-   ".single-content .wp-block-image { margin: 0 0 2rem }" further down this
-   file. That selector has the same specificity as ".single-content .alignwide"
-   and comes later, so it won the tie and zeroed the negative margins below,
-   leaving wide and full images sitting at the normal column width. Qualifying
-   with the element name raises specificity enough to win. */
+   These beat the figure margin rule further down the file because that one is
+   wrapped in :where() and so carries no specificity of its own. Before that,
+   the two tied and the later rule won, which zeroed the negative margins here
+   and left wide and full images sitting at the normal column width. */
 @media (min-width: 1140px) {
-    .single-content .alignwide,
-    .single-content figure.alignwide {
+    .single-content .alignwide {
         max-width: 1100px;
         margin-left: calc(50% - 550px);
         margin-right: calc(50% - 550px);
@@ -628,8 +654,7 @@ img {
     }
 }
 
-.single-content .alignfull,
-.single-content figure.alignfull {
+.single-content .alignfull {
     max-width: 100vw;
     margin-left: calc(50% - 50vw);
     margin-right: calc(50% - 50vw);
@@ -770,8 +795,14 @@ img {
     padding: 0;
 }
 
-.single-content figure,
-.single-content .wp-block-image {
+/* :where() so this contributes no specificity of its own, leaving the rule at
+   (0,1,0). It used to tie with .single-content .alignwide and .alignfull at
+   (0,2,0) and win purely by coming later in the file, which zeroed their
+   negative margins and silently disabled wide and full alignment. Anything
+   carrying an alignment class now beats this without having to name the element
+   it happens to be, which matters because the editor wraps an aligned image in
+   a div and leaves an unaligned one as a bare figure. */
+.single-content :where(figure, .wp-block-image) {
     margin: 0 0 2rem;
 }
 
@@ -797,12 +828,26 @@ img {
    inside that box, centred by auto margins, and the caption centres under it
    on the text-align rule the theme already applies to figcaption.
 
-   The selectors name image figures specifically rather than any > figure. A
-   bare figure selector also matches core's table, embed, pullquote, audio,
-   video and gallery blocks, all of which core wraps in <figure>. That stretched
-   an unaligned table to the full breakout width while the paragraphs around it
-   stayed at 652px, and stretched oEmbed players that had been requested at
-   $content_width.
+   The rule matches on what the figure CONTAINS, not on its class. A bare
+   figure selector is too broad: core wraps its table, embed, pullquote, audio,
+   video and gallery blocks in <figure> too, and those were being stretched to
+   the full breakout width while the paragraphs around them stayed at 652px.
+   Naming block classes instead was too narrow, and broke every image in a post
+   written in the classic editor, which emits <figure class="aligncenter
+   size-full"> with no block class at all. A direct <img> child, optionally
+   wrapped in a link, is what actually separates an image figure from those
+   other blocks, which contain a table, div, blockquote, audio, video and nested
+   figures respectively.
+
+   Two container shapes occur and both need matching. An image can be a bare
+   <figure>, or a <figure> wrapped in <div class="wp-block-image"> — the editor
+   emits the wrapped form for an aligned image, so on a real photoblog it is the
+   common one. Matching only the bare figure leaves every wrapped image at column
+   width, which is exactly what 1.2.1 shipped.
+
+   :has() is required for this. Browsers without it fall back to leaving images
+   at the reading column width, which is how the theme behaved before 1.2.0:
+   smaller than intended, not broken.
 
    1304px, not 1400px: that is what .single-featured-image actually nets after
    its own padding and .site-main's, so images in content and the featured image
@@ -812,8 +857,8 @@ img {
    close to the viewport width, so there is nothing to break out of. Floats and
    the explicit wide/full alignments keep their own behaviour. */
 @media (min-width: 1140px) {
-    .single-content > figure.wp-block-image:not(.alignleft):not(.alignright):not(.alignwide):not(.alignfull),
-    .single-content > figure.wp-caption:not(.alignleft):not(.alignright):not(.alignwide):not(.alignfull) {
+    .single-content > figure:has(> img, > a > img):not(.alignleft):not(.alignright):not(.alignwide):not(.alignfull),
+    .single-content > div.wp-block-image:has(img):not(.alignleft):not(.alignright):not(.alignwide):not(.alignfull) {
         width: min(1304px, 100vw - 6rem);
         /* .wp-caption sets max-width:100%, which would clamp the width above
            back to the column. width already caps the box, so drop the limit. */
@@ -822,8 +867,10 @@ img {
         transform: translateX(-50%);
     }
 
-    .single-content > figure.wp-block-image:not(.alignleft):not(.alignright):not(.alignwide):not(.alignfull) > img,
-    .single-content > figure.wp-caption:not(.alignleft):not(.alignright):not(.alignwide):not(.alignfull) > img {
+    /* Descendant, not child: in the wrapped shape the image sits one level
+       further down, inside the figure. */
+    .single-content > figure:has(> img, > a > img):not(.alignleft):not(.alignright):not(.alignwide):not(.alignfull) img,
+    .single-content > div.wp-block-image:has(img):not(.alignleft):not(.alignright):not(.alignwide):not(.alignfull) img {
         margin-left: auto;
         margin-right: auto;
     }

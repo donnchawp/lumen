@@ -12,7 +12,7 @@ if (!defined('ABSPATH')) {
 get_header();
 ?>
 
-<main id="primary" class="site-main">
+<main id="primary" class="site-main" tabindex="-1">
 
 <?php
 $lumen_posts_page = (int) get_option('page_for_posts');

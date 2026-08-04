@@ -3,7 +3,7 @@ Contributors: donncha
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 1.2.1
+Stable tag: 1.2.4
 License: GNU General Public License v2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -51,6 +51,26 @@ Lumen is distributed under the terms of the GNU GPL version 2 or later.
 This theme bundles no third-party assets, fonts, images, or libraries. It uses the system font stack via CSS and ships no JavaScript of its own.
 
 == Changelog ==
+
+= 1.2.4 =
+* Images in posts really do render at their own width now. 1.2.3 only matched an image sitting in a bare figure, and the editor wraps an aligned image in a div around that figure, which is the shape almost every photo on a photoblog has. The rule matches both containers.
+* Wide alignment works on a wrapped image too. The fix in 1.2.1 named the element to win a specificity tie and only covered the figure form, so the div form still lost. The figure margin rule is wrapped in :where() instead, dropping it to no specificity so any alignment class beats it whatever element it lands on.
+
+= 1.2.3 =
+* Images in posts written with the classic editor render at their own width again. 1.2.1 narrowed the rule to the block editor's own figure classes, and the classic editor writes figure class="aligncenter size-full" with no block class, so every one of those images was pushed back into the reading column. The rule now matches a figure that directly wraps an image, linked or not, which is what actually tells an image apart from the table, embed, pullquote, audio, video and gallery blocks that core also wraps in a figure.
+
+= 1.2.2 =
+* Grid photos ask for the right file size between 481px and 563px wide. The sizes hint switched to half-width at 481px, but the grid does not fit a second column until 564px, so in that window the browser fetched a 240px file for a 433px slot.
+* The date on a card overlay meets WCAG AA over any photo. Over a white frame the gradient left it at 4.27:1; it is 4.96:1 now.
+* A Customizer accent colour is checked against the lighter of the two backgrounds it is painted on. Checking only the darker one let a colour pass at 4.5:1 there and fail at 4.29:1 behind the current pagination item, the focused skip link and note rows on hover.
+* Untitled protected and private posts keep their prefix once the password is entered, matching what core does for titled ones. Before, entering the password turned "Protected: Untitled" into a bare "Untitled" while a titled post beside it still read "Protected: Sunset".
+* Comment navigation has its own styling instead of picking up the post navigation's, which was right-aligning "Newer comments" for no reason.
+* The reply heading is an h2. On a post with no comments it was an h3 following the post h1, skipping a level.
+* The skip link moves focus in Safari as well. Its target was not focusable, so the page jumped but focus stayed in the header.
+* main is outside the loop in single.php and page.php, as it already was in the other five templates, and no longer opens and closes per iteration.
+* Orientation logic moved out of the gallery template into lumen_get_grid_image_size().
+* $content_width is set on after_setup_theme so a child theme can override it.
+* Removed two declarations from the post navigation that had nothing to distribute, and a comment crediting one of them with an effect flex:1 was producing.
 
 = 1.2.1 =
 * The image breakout added in 1.2.0 was matching any figure, so unaligned tables, embeds, pullquotes, audio, video and galleries were stretched out of the reading column too. It now applies to image figures and captions only.
