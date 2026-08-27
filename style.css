@@ -3,7 +3,7 @@ Theme Name: Lumen
 Author: Donncha O Caoimh
 Author URI: https://odd.blog/
 Description: A dark, gallery-first photography theme for photoblogs. Features a responsive CSS Grid layout, featured image hover overlays, and a dedicated section for text-only posts at the bottom of archive pages.
-Version: 1.6.0
+Version: 1.6.1
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
@@ -1090,6 +1090,30 @@ img {
            250 should not be widened back up here. */
         grid-template-columns: repeat(auto-fill, minmax(min(var(--photo-grid-min, 450px), 250px), 1fr));
         gap: 1rem;
+
+        /* Full bleed for the whole narrow regime, not for a guessed phone
+           width. .site-main's padding is a fixed 48px whatever the screen is,
+           so on a 320px phone it spends 16% of the viewport on margin and the
+           photo loses 41% of its area to it.
+
+           This was gated at 480px, which looked like a phone boundary and is
+           not one: Android's display-size setting scales the density, so the
+           same handset reports 412px at default and 523px a couple of notches
+           down. A Galaxy S23 Ultra at 523px sat just outside and kept the
+           padding. Tying it to where the layout stops being narrow removes the
+           guess, and it holds however wide a phone decides it is.
+
+           Only the grid breaks out. The notes list and the pagination below it
+           keep their padding, because text running into the edge of the screen
+           reads badly in a way a photograph does not. */
+        margin-left: calc(-1 * var(--page-padding));
+        margin-right: calc(-1 * var(--page-padding));
+    }
+
+    /* A radius on a photo touching the screen edge reads as a rendering fault
+       rather than a detail, and there is no card left to round. */
+    .photo-card {
+        border-radius: 0;
     }
 
     .text-post-item {
@@ -1110,22 +1134,6 @@ img {
 @media (max-width: 480px) {
     .photo-grid {
         grid-template-columns: 1fr;
-        /* Full bleed. .site-main's 1.5rem of padding is a fixed 48px whatever
-           the screen is, which on a 320px phone is 16% of the viewport spent on
-           margin and costs the photo 41% of its area. Only the grid breaks out:
-           the notes list and the pagination below it keep the padding, because
-           text running into the screen edge reads badly.
-
-           The sizes attribute already advertises 100vw at this breakpoint, so
-           it goes from slightly over-stating the slot to being exact. */
-        margin-left: calc(-1 * var(--page-padding));
-        margin-right: calc(-1 * var(--page-padding));
-    }
-
-    /* A 4px radius on a photo touching both edges reads as a rendering fault
-       rather than a detail, and there is no card left to round. */
-    .photo-card {
-        border-radius: 0;
     }
 
     .site-nav ul {

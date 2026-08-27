@@ -3,7 +3,7 @@ Contributors: donncha
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 1.6.0
+Stable tag: 1.6.1
 License: GNU General Public License v2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -51,6 +51,9 @@ Lumen is distributed under the terms of the GNU GPL version 2 or later.
 This theme bundles no third-party assets, fonts, images, or libraries. It uses the system font stack via CSS and ships no JavaScript of its own.
 
 == Changelog ==
+
+= 1.6.1 =
+* Photos run edge to edge on any phone, not just a narrow one. 1.6.0 gated the full-bleed grid at 480px, which looks like a phone boundary and is not one: Android's display size setting scales the density, so the same handset reports 412px at its default and 523px a couple of notches down. A Galaxy S23 Ultra at 523px sat just outside it and kept the padding. Full bleed is tied to the narrow layout breakpoint now, so it holds however wide a phone decides it is, and the two-column tablet range gets it too.
 
 = 1.6.0 =
 * Photos run edge to edge on a phone. The 1.5rem of padding on .site-main is a fixed 48px whatever the screen is, so a 320px phone was spending 16% of its viewport on margin and the photo was losing 41% of its area to it. Below 481px the grid cancels that padding out. The notes list and the pagination keep theirs, because text running into the edge of the screen reads badly.
