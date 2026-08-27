@@ -3,7 +3,7 @@ Theme Name: Lumen
 Author: Donncha O Caoimh
 Author URI: https://odd.blog/
 Description: A dark, gallery-first photography theme for photoblogs. Features a responsive CSS Grid layout, featured image hover overlays, and a dedicated section for text-only posts at the bottom of archive pages.
-Version: 1.3.0
+Version: 1.3.1
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
@@ -106,9 +106,24 @@ img {
     margin-top: 1.5rem;
 }
 
+/* wp_nav_menu emits a ul.menu that the theme never styled, so the items fell
+   back to browser defaults: a disc each, one per line. The reset at the top of
+   this file zeroes list padding, which left those markers hanging outside the
+   list rather than indented inside it. */
+.site-nav ul {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    /* Row gap first, for a menu that outgrows a phone. 2rem is what the 1rem
+       either side of two adjacent anchors used to add up to, so the spacing is
+       unchanged; carrying it on the anchors instead would leave wrapped rows
+       touching, and put a stray 1rem outside the first and last items. */
+    gap: 0.5rem 2rem;
+}
+
 .site-nav a {
     color: var(--text-secondary);
-    margin: 0 1rem;
     font-size: 0.85rem;
     letter-spacing: 0.05em;
     text-transform: uppercase;
@@ -1085,8 +1100,11 @@ img {
         grid-template-columns: 1fr;
     }
 
+    .site-nav ul {
+        gap: 0.5rem 1rem;
+    }
+
     .site-nav a {
-        margin: 0 0.5rem;
         font-size: 0.8rem;
     }
 }

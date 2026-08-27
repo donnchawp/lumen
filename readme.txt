@@ -3,7 +3,7 @@ Contributors: donncha
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 1.3.0
+Stable tag: 1.3.1
 License: GNU General Public License v2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -51,6 +51,9 @@ Lumen is distributed under the terms of the GNU GPL version 2 or later.
 This theme bundles no third-party assets, fonts, images, or libraries. It uses the system font stack via CSS and ships no JavaScript of its own.
 
 == Changelog ==
+
+= 1.3.1 =
+* The navigation menu is a horizontal row again rather than a bulleted list. The theme styled the links but never the ul that wp_nav_menu wraps them in, so the items fell back to browser defaults and stacked one per line, each with a disc hanging outside the list because the reset zeroes list padding. The spacing is unchanged, and the menu now wraps to a second row on a narrow phone instead of running off the side.
 
 = 1.3.0 =
 * The photo grid's column width is set under Appearance > Customize > Photo Grid. It is the narrowest a column may be, from 200px to 600px, not a column count: the grid still fits as many columns as will fit and still drops to fewer as the window narrows, so a larger number means fewer and bigger photos. 300 gives four across on a wide screen, 350 gives three, 450 gives two.
