@@ -3,7 +3,7 @@ Contributors: donncha
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 1.3.1
+Stable tag: 1.4.0
 License: GNU General Public License v2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -23,7 +23,7 @@ A dark, gallery-first WordPress theme designed for photoblogs. Features a respon
 - Portrait-aware image sizing (tall photos get a portrait crop and a taller grid cell)
 - Overlay with title and date, shown on hover, on keyboard focus, and always on touch devices
 - Text-only posts section on archive pages
-- Customizer support for accent color and photo grid column width
+- Customizer support for background color, accent color and photo grid column width
 - Accessible, semantic HTML5 markup
 - No dependencies, no jQuery, no JavaScript of its own
 
@@ -51,6 +51,12 @@ Lumen is distributed under the terms of the GNU GPL version 2 or later.
 This theme bundles no third-party assets, fonts, images, or libraries. It uses the system font stack via CSS and ships no JavaScript of its own.
 
 == Changelog ==
+
+= 1.4.0 =
+* The page background is set under Appearance > Customize > Colors, and every other colour is worked out from it. Pick something light and the text, panels and borders go dark to match instead of leaving dark-on-dark. The default is unchanged and renders identically to 1.3.1, down to the hex value of every token.
+* Text tones are derived from the contrast ratios the palette already had rather than from fixed hex values, and each is measured against the surface it is really painted on. --text-muted was tuned at 4.74:1 against the page background, but the note row date and the search placeholder paint it on a panel, where it was only 4.52:1 with nothing spare for the background moving.
+* The photo card overlay has its own title and date colours now. It is a dark scrim sitting on the photo rather than on the page, so a light background would have put dark text on black. The accent still shows on the title there, lightened for the scrim instead of darkened for the page.
+* A background too close to mid grey to carry legible text is nudged away from the text until it can. Contrast against the nearer of black and white bottoms out around 4.58:1 in that band, and the panels sit a step closer to the text again, so nothing painted on one could reach AA. This is the same bargain the theme already makes with a dark accent colour.
 
 = 1.3.1 =
 * The navigation menu is a horizontal row again rather than a bulleted list. The theme styled the links but never the ul that wp_nav_menu wraps them in, so the items fell back to browser defaults and stacked one per line, each with a disc hanging outside the list because the reset zeroes list padding. The spacing is unchanged, and the menu now wraps to a second row on a narrow phone instead of running off the side.
