@@ -3,7 +3,7 @@ Contributors: donncha
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 1.5.0
+Stable tag: 1.6.0
 License: GNU General Public License v2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -51,6 +51,11 @@ Lumen is distributed under the terms of the GNU GPL version 2 or later.
 This theme bundles no third-party assets, fonts, images, or libraries. It uses the system font stack via CSS and ships no JavaScript of its own.
 
 == Changelog ==
+
+= 1.6.0 =
+* Photos run edge to edge on a phone. The 1.5rem of padding on .site-main is a fixed 48px whatever the screen is, so a 320px phone was spending 16% of its viewport on margin and the photo was losing 41% of its area to it. Below 481px the grid cancels that padding out. The notes list and the pagination keep theirs, because text running into the edge of the screen reads badly.
+* Card corners are square at full bleed. A 4px radius on a photo touching both edges reads as a rendering fault rather than a detail.
+* The page padding is a custom property, --page-padding. The grid's breakout has to cancel exactly what .site-main applies, and two hardcoded 1.5rems would drift apart eventually.
 
 = 1.5.0 =
 * Grid photos are shown whole rather than cropped to fit the cell. A card took a fixed 4:3 shape, or 3:4 for a tall photo, and object-fit cut the frame down to it. Both orientations are wider than their card, so the cut always came off the sides: a photo with a border painted into it lost its left and right edges and kept top and bottom, which is why the borders looked lopsided. Cards take the shape of their photo now and all four edges show.

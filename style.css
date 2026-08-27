@@ -3,7 +3,7 @@ Theme Name: Lumen
 Author: Donncha O Caoimh
 Author URI: https://odd.blog/
 Description: A dark, gallery-first photography theme for photoblogs. Features a responsive CSS Grid layout, featured image hover overlays, and a dedicated section for text-only posts at the bottom of archive pages.
-Version: 1.5.0
+Version: 1.6.0
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
@@ -37,6 +37,9 @@ Tags: blog, photography, one-column, grid-layout, custom-colors, custom-menu, fe
        a photo rather than on the page, so these stay light whatever the page
        background is set to; using --accent and --text-secondary there put dark
        text on black the moment the page went light. */
+    /* Horizontal padding on .site-main. Named because the photo grid cancels
+       it out to go full bleed on a phone, and the two have to agree. */
+    --page-padding: 1.5rem;
     --accent-overlay: #ffffff;
     --text-overlay: #888888;
     --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
@@ -142,7 +145,7 @@ img {
 
 /* ========== MAIN LAYOUT ========== */
 .site-main {
-    padding: 2rem 1.5rem;
+    padding: 2rem var(--page-padding);
     max-width: 1400px;
     margin: 0 auto;
 }
@@ -1107,6 +1110,22 @@ img {
 @media (max-width: 480px) {
     .photo-grid {
         grid-template-columns: 1fr;
+        /* Full bleed. .site-main's 1.5rem of padding is a fixed 48px whatever
+           the screen is, which on a 320px phone is 16% of the viewport spent on
+           margin and costs the photo 41% of its area. Only the grid breaks out:
+           the notes list and the pagination below it keep the padding, because
+           text running into the screen edge reads badly.
+
+           The sizes attribute already advertises 100vw at this breakpoint, so
+           it goes from slightly over-stating the slot to being exact. */
+        margin-left: calc(-1 * var(--page-padding));
+        margin-right: calc(-1 * var(--page-padding));
+    }
+
+    /* A 4px radius on a photo touching both edges reads as a rendering fault
+       rather than a detail, and there is no card left to round. */
+    .photo-card {
+        border-radius: 0;
     }
 
     .site-nav ul {
