@@ -27,19 +27,36 @@ const LUMEN_GRID_MIN_WIDTH_LOWER   = 200;
 const LUMEN_GRID_MIN_WIDTH_UPPER   = 600;
 
 /**
- * Grid geometry, mirroring style.css.
+ * The page frame, mirroring style.css.
  *
  * lumen_get_grid_bands() works out where the grid changes column count so the
  * sizes attribute can describe it. That calculation is only as true as these
- * numbers are, so changing the grid rules in style.css means changing these to
+ * numbers are, so changing the frame in style.css means changing these to
  * match.
+ *
+ * Most of it is not mirrored at all any more. LUMEN_SITE_MAX_WIDTH and
+ * LUMEN_CONTENT_WIDTH are emitted as --site-max-width and --reading-width by
+ * lumen_scripts(), so style.css consumes them rather than repeating them, and
+ * the widths that used to be written out at a dozen selectors are now derived
+ * from those two.
+ *
+ * What genuinely has to agree is the padding and the two breakpoints.
+ * --page-padding stays in style.css because it is a rem value, and turning it
+ * into pixels here would break for anyone running a larger default font size;
+ * LUMEN_GRID_PAGE_PADDING is its pixel equivalent at the default root size,
+ * which is the assumption the band maths already rests on. A media query cannot
+ * read a custom property at all, so the breakpoints stay written out in both.
  */
-const LUMEN_GRID_MAX_CONTENT  = 1352; // .site-main max-width 1400 less its 2 x 1.5rem padding.
-const LUMEN_GRID_PAGE_PADDING = 48;   // 2 x 1.5rem.
+const LUMEN_SITE_MAX_WIDTH    = 1400; // --site-max-width.
+const LUMEN_CONTENT_WIDTH     = 700;  // --reading-width.
+const LUMEN_GRID_PAGE_PADDING = 48;   // 2 x --page-padding.
 const LUMEN_GRID_GAP          = 24;   // 1.5rem, above 768px.
 const LUMEN_GRID_GAP_NARROW   = 16;   // 1rem, at 768px and below.
 const LUMEN_GRID_NARROW_BP    = 768;  // At and below this the grid runs full bleed.
 const LUMEN_GRID_ONE_COL_BP   = 480;  // At and below this the grid is forced to one column.
+
+// What .site-main leaves for the grid once it has paid its own padding.
+const LUMEN_GRID_MAX_CONTENT  = LUMEN_SITE_MAX_WIDTH - LUMEN_GRID_PAGE_PADDING;
 
 /**
  * The palette the theme was designed around.
@@ -85,14 +102,30 @@ const LUMEN_TEXT_REFERENCE = array(
 const LUMEN_MIN_CONTRAST = 4.5;
 
 /**
- * The darkest the photo card overlay's scrim can composite to.
+ * How opaque the photo card overlay's scrim is at its foot.
  *
- * The overlay is a 0.9-alpha black gradient over arbitrary photo data, so the
- * worst case for anything painted on it is the lightest photo: 10% of white is
- * #1a1a1a. Overlay text is checked against that, and never against the page
- * background, because the scrim stays dark however light the page gets.
+ * Emitted as --overlay-alpha and used by the gradient in style.css, so this is
+ * the value itself rather than a copy of it. lumen_overlay_background() then
+ * derives the surface that alpha implies, which is what overlay text is
+ * checked against. Softening the scrim therefore re-checks the text against
+ * the lighter surface it just created, instead of leaving the two to disagree.
  */
-const LUMEN_OVERLAY_BACKGROUND = '#1a1a1a';
+const LUMEN_OVERLAY_ALPHA = 0.9;
+
+/**
+ * The lightest the photo card overlay's scrim can composite to.
+ *
+ * The overlay is a black gradient over arbitrary photo data, so the worst case
+ * for anything painted on it is the lightest photo: whatever is left of white
+ * once the scrim is laid over it. Overlay text is checked against that, and
+ * never against the page background, because the scrim stays dark however
+ * light the page gets.
+ *
+ * @return string Hex colour.
+ */
+function lumen_overlay_background() {
+    return lumen_mix('#ffffff', '#000000', LUMEN_OVERLAY_ALPHA);
+}
 
 /**
  * The two grid image sizes.
@@ -124,7 +157,7 @@ function lumen_setup() {
     // this stays at the column width. Set here rather than at file scope so a
     // child theme can override it on the same hook.
     if (!isset($content_width)) {
-        $content_width = 700;
+        $content_width = LUMEN_CONTENT_WIDTH;
     }
 
     // Translations. No .mo files ship with the theme; this lets a translation
@@ -132,10 +165,7 @@ function lumen_setup() {
     // added later, be picked up.
     load_theme_textdomain('lumen', get_template_directory() . '/languages');
 
-    // Add theme support for featured images
     add_theme_support('post-thumbnails');
-
-    // Set default featured image size
     set_post_thumbnail_size(600, 450, true);
 
     // Grid images at two widths, uncropped. Which one is asked for depends on
@@ -145,15 +175,14 @@ function lumen_setup() {
     // an uncropped width bound already fits either orientation.
     add_image_size('lumen-grid', LUMEN_GRID_WIDTH, LUMEN_GRID_ANY_HEIGHT, false);
     add_image_size('lumen-grid-large', LUMEN_GRID_LARGE_WIDTH, LUMEN_GRID_ANY_HEIGHT, false);
-    add_image_size('lumen-single', 1400, 900, false);
+    // The featured image on a single post. Unlike the grid sizes above this one
+    // still binds on height, so a tall portrait is generated narrower than the
+    // slot it lands in. Widening it means regenerating every attachment, so it
+    // is left alone here rather than changed in passing.
+    add_image_size('lumen-single', LUMEN_SITE_MAX_WIDTH, 900, false);
 
-    // Add theme support for title tag
     add_theme_support('title-tag');
-
-    // RSS feed links in <head>
     add_theme_support('automatic-feed-links');
-
-    // HTML5 support
     add_theme_support('html5', array(
         'search-form',
         'comment-form',
@@ -164,7 +193,6 @@ function lumen_setup() {
         'style',
     ));
 
-    // Add theme support for responsive embeds
     add_theme_support('responsive-embeds');
 
     // Block editor: wide and full alignments, previewed with a dedicated
@@ -182,7 +210,6 @@ function lumen_setup() {
     add_theme_support('dark-editor-style');
     add_editor_style('editor-style.css');
 
-    // Register navigation menu
     register_nav_menus(array(
         'primary' => __('Primary Menu', 'lumen'),
     ));
@@ -193,7 +220,6 @@ add_action('after_setup_theme', 'lumen_setup');
  * Enqueue Scripts and Styles
  */
 function lumen_scripts() {
-    // Theme stylesheet
     wp_enqueue_style(
         'lumen-style',
         get_stylesheet_uri(),
@@ -201,11 +227,20 @@ function lumen_scripts() {
         wp_get_theme()->get('Version')
     );
 
-    // Customizer values that reach the stylesheet as custom property overrides.
+    // Everything PHP owns that the stylesheet needs, as custom property
+    // overrides. style.css carries the same values as var() fallbacks, so the
+    // page still renders if this block never arrives, but these are the
+    // authoritative copies and the ones the sizes attribute is computed from.
+    //
     // The whole colour palette is derived rather than only the accent, because
     // every tone in it is relative to the background the visitor picked.
     $properties = array_merge(
-        array('--photo-grid-min' => lumen_get_grid_min_width() . 'px'),
+        array(
+            '--photo-grid-min' => lumen_get_grid_min_width() . 'px',
+            '--site-max-width' => LUMEN_SITE_MAX_WIDTH . 'px',
+            '--reading-width'  => LUMEN_CONTENT_WIDTH . 'px',
+            '--overlay-alpha'  => LUMEN_OVERLAY_ALPHA,
+        ),
         lumen_palette()
     );
 
@@ -314,25 +349,6 @@ function lumen_get_background_color() {
 }
 
 /**
- * The background the accent colour is checked for contrast against.
- *
- * The accent is painted on two surfaces: --bg-primary for the site title, links
- * and focus outlines, and --bg-secondary behind the current pagination item,
- * the focused skip link, and note rows on hover. --bg-secondary is always the
- * one shifted a step toward the text, so it is always the worse of the two for
- * anything painted in the text's direction, whichever way round the scheme is.
- * Checking against it therefore satisfies both. Checking --bg-primary instead
- * used to let a colour land at 4.5:1 there and 4.29:1 on --bg-secondary.
- *
- * @return string Hex colour, matching --bg-secondary as rendered.
- */
-function lumen_accent_background() {
-    $palette = lumen_palette();
-
-    return $palette['--bg-secondary'];
-}
-
-/**
  * Every colour custom property, derived from the background colour.
  *
  * The theme is one scheme rather than a light one and a dark one. The surfaces
@@ -381,16 +397,24 @@ function lumen_palette() {
         );
     }
 
+    // Checked against --bg-secondary, not the page. The accent is painted on
+    // both: --bg-primary for the site title, links and focus outlines, and
+    // --bg-secondary behind the current pagination item, the focused skip link
+    // and note rows on hover. --bg-secondary is always the one shifted a step
+    // toward the text, so it is always the worse of the two for anything
+    // painted in the text's direction, whichever way round the scheme is.
+    // Checking --bg-primary instead used to let a colour land at 4.5:1 there
+    // and 4.29:1 where it really sat.
     $palette['--accent'] = lumen_ensure_contrast($accent, $palette['--bg-secondary']);
 
     // The scrim is dark whatever the page is doing, so the overlay's accent is
     // checked against the scrim and ends up lightened where the page's is
     // darkened. Same colour picked, pushed the other way.
-    $palette['--accent-overlay'] = lumen_ensure_contrast($accent, LUMEN_OVERLAY_BACKGROUND);
+    $palette['--accent-overlay'] = lumen_ensure_contrast($accent, lumen_overlay_background());
 
-    // The date under the overlay title. Fixed rather than derived: the 0.9 alpha
-    // on the gradient in style.css was chosen to put exactly this tone at 4.9:1
-    // over the lightest photo it can composite against.
+    // The date under the overlay title. Fixed rather than derived:
+    // LUMEN_OVERLAY_ALPHA was chosen to put exactly this tone at 4.9:1 over the
+    // lightest photo the scrim can composite against.
     $palette['--text-overlay'] = LUMEN_TEXT_REFERENCE['--text-secondary'][0];
 
     $cache[$key] = $palette;
@@ -440,19 +464,21 @@ function lumen_get_display_title($post = null) {
     // password was accepted, so on a page listing two protected posts sharing
     // one password the titled one would still read "Protected: Sunset" while
     // the untitled one fell back to a bare "Untitled".
-    if (!is_admin() && !empty($post_object->post_password)) {
-        $format = apply_filters('protected_title_format', __('Protected: %s'), $post_object);
+    $format = null;
 
-        return wp_strip_all_tags(sprintf($format, $fallback));
+    if (!is_admin()) {
+        if (!empty($post_object->post_password)) {
+            $format = apply_filters('protected_title_format', __('Protected: %s'), $post_object);
+        } elseif ('private' === get_post_status($post_object)) {
+            $format = apply_filters('private_title_format', __('Private: %s'), $post_object);
+        }
     }
 
-    if (!is_admin() && 'private' === get_post_status($post_object)) {
-        $format = apply_filters('private_title_format', __('Private: %s'), $post_object);
-
-        return wp_strip_all_tags(sprintf($format, $fallback));
-    }
-
-    return $fallback;
+    // Tested against null rather than truthiness, so a filter that returns an
+    // empty format still produces an empty title the way core would.
+    return null === $format
+        ? $fallback
+        : wp_strip_all_tags(sprintf($format, $fallback));
 }
 
 /**
@@ -462,19 +488,8 @@ function lumen_get_display_title($post = null) {
  * @return float Luminance between 0 and 1.
  */
 function lumen_relative_luminance($hex) {
-    $hex = ltrim((string) $hex, '#');
-
-    if (3 === strlen($hex)) {
-        $hex = $hex[0] . $hex[0] . $hex[1] . $hex[1] . $hex[2] . $hex[2];
-    }
-
-    $channels = array(
-        hexdec(substr($hex, 0, 2)),
-        hexdec(substr($hex, 2, 2)),
-        hexdec(substr($hex, 4, 2)),
-    );
-
-    $weights = array(0.2126, 0.7152, 0.0722);
+    $channels  = lumen_hex_to_rgb($hex);
+    $weights   = array(0.2126, 0.7152, 0.0722);
     $luminance = 0.0;
 
     foreach ($channels as $index => $value) {
@@ -504,15 +519,6 @@ function lumen_contrast_ratio($one, $two) {
     $darker  = min($a, $b);
 
     return ($lighter + 0.05) / ($darker + 0.05);
-}
-
-/**
- * The two ends of the scale a colour can be pushed toward for contrast.
- *
- * @return array{0: string, 1: string} Black and white.
- */
-function lumen_poles() {
-    return array('#000000', '#ffffff');
 }
 
 /**
@@ -593,11 +599,11 @@ function lumen_hex_to_rgb($hex) {
  *
  * @param string $hex        Hex colour to adjust.
  * @param string $background Hex colour it will sit on.
- * @param float  $minimum    Target contrast ratio. Default 4.5 (WCAG AA).
+ * @param float  $minimum    Target contrast ratio. Default LUMEN_MIN_CONTRAST.
  * @return string Hex colour meeting the ratio, or the pole if the background
  *                is mid-toned enough that nothing else does.
  */
-function lumen_ensure_contrast($hex, $background, $minimum = 4.5) {
+function lumen_ensure_contrast($hex, $background, $minimum = LUMEN_MIN_CONTRAST) {
     if (lumen_contrast_ratio($hex, $background) >= $minimum) {
         return $hex;
     }
@@ -738,10 +744,17 @@ function lumen_usable_background($background) {
 }
 
 /**
- * Whether a post should appear in the photo grid.
+ * Whether a post's photo should be shown.
+ *
+ * This is the theme's definition of "this post is a photo": the grid uses it to
+ * decide what gets a card, and the single and page templates use it to decide
+ * whether to render the featured image. One predicate rather than three, so a
+ * post cannot appear as a card in the grid and then render without its photo
+ * when you click it.
  *
  * Password-protected posts are excluded: on a photoblog the featured image is
- * the content being protected, so it must not be browsable in the grid.
+ * the content being protected, so it must not be browsable in the grid or sit
+ * above the password form.
  *
  * @param int|WP_Post|null $post Optional. Post ID or object. Default global $post.
  * @return bool
@@ -821,38 +834,28 @@ function lumen_get_grid_bands() {
         ),
     );
 
-    // The two regimes above it, as [first viewport, last viewport or null,
-    // minmax() floor, gap, page padding]. The narrow one tightens the gap and
-    // spends no padding, because the grid cancels it to reach both edges. The
-    // floor is the configured width in both: capping it on small screens was
-    // overriding the setting on the screens where a big column matters most.
+    // The two regimes above it, as [first viewport, last viewport or null, gap,
+    // page padding]. The narrow one tightens the gap and spends no padding,
+    // because the grid cancels it to reach both edges.
+    //
+    // The minmax() floor is not among them: it is the configured width in both.
+    // Capping it on small screens was overriding the setting on the screens
+    // where a big column matters most, so $min_width now governs throughout.
     $regimes = array(
-        array(
-            LUMEN_GRID_ONE_COL_BP + 1,
-            LUMEN_GRID_NARROW_BP,
-            $min_width,
-            LUMEN_GRID_GAP_NARROW,
-            0,
-        ),
-        array(
-            LUMEN_GRID_NARROW_BP + 1,
-            null,
-            $min_width,
-            LUMEN_GRID_GAP,
-            LUMEN_GRID_PAGE_PADDING,
-        ),
+        array(LUMEN_GRID_ONE_COL_BP + 1, LUMEN_GRID_NARROW_BP, LUMEN_GRID_GAP_NARROW, 0),
+        array(LUMEN_GRID_NARROW_BP + 1, null, LUMEN_GRID_GAP, LUMEN_GRID_PAGE_PADDING),
     );
 
     foreach ($regimes as $regime) {
-        list($from_vw, $to_vw, $floor, $gap, $pad) = $regime;
+        list($from_vw, $to_vw, $gap, $pad) = $regime;
 
         for ($vw = $from_vw; ; ) {
             $content = min($vw - $pad, LUMEN_GRID_MAX_CONTENT);
-            $columns = max(1, (int) floor(($content + $gap) / ($floor + $gap)));
+            $columns = max(1, (int) floor(($content + $gap) / ($min_width + $gap)));
 
             // Where one more column first fits. Null once .site-main has stopped
             // growing, because the count can no longer change after that.
-            $next_content = ($columns + 1) * $floor + $columns * $gap;
+            $next_content = ($columns + 1) * $min_width + $columns * $gap;
             $max_vw       = $next_content > LUMEN_GRID_MAX_CONTENT
                 ? null
                 : $next_content + $pad - 1;
@@ -897,6 +900,12 @@ function lumen_get_grid_bands() {
  * @return float Width in CSS pixels.
  */
 function lumen_get_grid_widest_column() {
+    static $widest = null;
+
+    if (null !== $widest) {
+        return $widest;
+    }
+
     $widest = 0;
 
     foreach (lumen_get_grid_bands() as $band) {

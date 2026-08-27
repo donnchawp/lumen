@@ -3,7 +3,7 @@ Contributors: donncha
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 1.6.3
+Stable tag: 1.6.4
 License: GNU General Public License v2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -51,6 +51,12 @@ Lumen is distributed under the terms of the GNU GPL version 2 or later.
 This theme bundles no third-party assets, fonts, images, or libraries. It uses the system font stack via CSS and ships no JavaScript of its own.
 
 == Changelog ==
+
+= 1.6.4 =
+* Housekeeping, with nothing to see on the site. The page frame is now one number in one place instead of the same number written out at a dozen selectors: the site width, the reading column and the page gutter are custom properties, and the widths derived from them, like the 1304px images in post content break out to, are written as the subtraction rather than the answer. Widening the frame used to mean editing five rules and a PHP constant and hoping you found them all.
+* The form fields and the two buttons were three near-copies of one look, and had already drifted apart on padding. They share a rule now. So had the block editor preview: inline code was 4px rounded there and 3px on the site, which is fixed, so the preview matches the post again.
+* Dropped two functions nothing called, one of which carried a long comment explaining a decision that is actually made somewhere else. That reasoning moved to where the decision is. The hex parser existed twice, the accent colour was the one derived colour not checking the theme's own contrast constant, and the overlay's worst-case surface was a hand-computed copy of what the scrim's opacity implies rather than being worked out from it. Softening the scrim now re-checks the text against the lighter surface it just created.
+* The two breakout rules for wide images sat in separate media queries 200 lines apart, agreeing on 1140px by way of a comment saying they agreed. They are one block now. The full-bleed treatment on a phone likewise stopped being written twice, once for the grid and once for the featured image.
 
 = 1.6.3 =
 * The featured image on a single post runs edge to edge on a phone as well. 1.6.2 did this for the grid and stopped there, and the single post was losing more than the grid ever did: .single-featured-image carries its own 1.5rem of padding on top of .site-main's, so on a 523px phone the photo was capped at 427px of a 523px screen. The title and the text below it keep their padding.

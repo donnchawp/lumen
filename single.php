@@ -28,11 +28,7 @@ get_header();
         </div>
     </header>
 
-    <?php
-    // The featured image is the protected content on a photoblog, so it stays
-    // hidden until the password is supplied.
-    if (has_post_thumbnail() && !post_password_required()) :
-    ?>
+    <?php if (lumen_is_photo_post()) : ?>
         <div class="single-featured-image">
             <?php the_post_thumbnail('lumen-single'); ?>
         </div>

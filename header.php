@@ -16,11 +16,17 @@ if (!defined('ABSPATH')) {
 <a class="skip-link screen-reader-text" href="#primary"><?php esc_html_e('Skip to content', 'lumen'); ?></a>
 
 <header class="site-header">
-    <?php if (is_front_page() && is_home()) : ?>
-        <h1 class="site-title"><a href="<?php echo esc_url(home_url('/')); ?>" rel="home"><?php echo esc_html(get_bloginfo('name')); ?></a></h1>
-    <?php else : ?>
-        <p class="site-title"><a href="<?php echo esc_url(home_url('/')); ?>" rel="home"><?php echo esc_html(get_bloginfo('name')); ?></a></p>
-    <?php endif; ?>
+    <?php
+    // An h1 only where the site title is the page's own heading. Everywhere else
+    // the h1 belongs to the post or the archive, so this drops to a <p>. Only
+    // the wrapper changes, so the link itself is written once.
+    printf(
+        '<%1$s class="site-title"><a href="%2$s" rel="home">%3$s</a></%1$s>',
+        (is_front_page() && is_home()) ? 'h1' : 'p',
+        esc_url(home_url('/')),
+        esc_html(get_bloginfo('name'))
+    );
+    ?>
 
     <?php
     $lumen_description = get_bloginfo('description');
