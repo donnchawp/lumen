@@ -23,7 +23,7 @@ get_header();
         <h1 class="single-title"><?php echo esc_html(lumen_get_display_title()); ?></h1>
     </header>
 
-    <?php if (has_post_thumbnail() && !post_password_required()) : ?>
+    <?php if (lumen_is_photo_post()) : ?>
         <div class="single-featured-image">
             <?php the_post_thumbnail('lumen-single'); ?>
         </div>
