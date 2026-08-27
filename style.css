@@ -3,7 +3,7 @@ Theme Name: Lumen
 Author: Donncha O Caoimh
 Author URI: https://odd.blog/
 Description: A dark, gallery-first photography theme for photoblogs. Features a responsive CSS Grid layout, featured image hover overlays, and a dedicated section for text-only posts at the bottom of archive pages.
-Version: 1.6.2
+Version: 1.6.3
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
@@ -1117,6 +1117,20 @@ img {
     /* A radius on a photo touching the screen edge reads as a rendering fault
        rather than a detail, and there is no card left to round. */
     .photo-card {
+        border-radius: 0;
+    }
+
+    /* The same bargain on a single post. This one was losing twice as much as
+       the grid: it carries its own 1.5rem of padding on top of .site-main's, so
+       a photo on a 523px phone was capped at 427px. The text below keeps its
+       padding; only the photograph goes to the edges. */
+    .single-featured-image {
+        margin-left: calc(-1 * var(--page-padding));
+        margin-right: calc(-1 * var(--page-padding));
+        padding: 0;
+    }
+
+    .single-featured-image img {
         border-radius: 0;
     }
 
