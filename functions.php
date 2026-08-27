@@ -38,8 +38,7 @@ const LUMEN_GRID_MAX_CONTENT  = 1352; // .site-main max-width 1400 less its 2 x 
 const LUMEN_GRID_PAGE_PADDING = 48;   // 2 x 1.5rem.
 const LUMEN_GRID_GAP          = 24;   // 1.5rem, above 768px.
 const LUMEN_GRID_GAP_NARROW   = 16;   // 1rem, at 768px and below.
-const LUMEN_GRID_NARROW_MIN   = 250;  // Cap on the minmax() floor at 768px and below.
-const LUMEN_GRID_NARROW_BP    = 768;
+const LUMEN_GRID_NARROW_BP    = 768;  // At and below this the grid runs full bleed.
 const LUMEN_GRID_ONE_COL_BP   = 480;  // At and below this the grid is forced to one column.
 
 /**
@@ -809,38 +808,43 @@ function lumen_get_grid_bands() {
         return $cache[$min_width];
     }
 
-    $pad = LUMEN_GRID_PAGE_PADDING;
-
-    // style.css forces one column at 480px and below whatever the setting is.
+    // style.css forces one column at 480px and below whatever the setting is,
+    // and the grid runs full bleed there, so the column is the whole viewport.
     $bands = array(
         array(
             'min_vw'  => 0,
             'max_vw'  => LUMEN_GRID_ONE_COL_BP,
             'columns' => 1,
             'gap'     => 0,
-            'slot'    => LUMEN_GRID_ONE_COL_BP - $pad,
+            'pad'     => 0,
+            'slot'    => LUMEN_GRID_ONE_COL_BP,
         ),
     );
 
     // The two regimes above it, as [first viewport, last viewport or null,
-    // minmax() floor, gap]. The narrow one caps the floor and tightens the gap.
+    // minmax() floor, gap, page padding]. The narrow one tightens the gap and
+    // spends no padding, because the grid cancels it to reach both edges. The
+    // floor is the configured width in both: capping it on small screens was
+    // overriding the setting on the screens where a big column matters most.
     $regimes = array(
         array(
             LUMEN_GRID_ONE_COL_BP + 1,
             LUMEN_GRID_NARROW_BP,
-            min($min_width, LUMEN_GRID_NARROW_MIN),
+            $min_width,
             LUMEN_GRID_GAP_NARROW,
+            0,
         ),
         array(
             LUMEN_GRID_NARROW_BP + 1,
             null,
             $min_width,
             LUMEN_GRID_GAP,
+            LUMEN_GRID_PAGE_PADDING,
         ),
     );
 
     foreach ($regimes as $regime) {
-        list($from_vw, $to_vw, $floor, $gap) = $regime;
+        list($from_vw, $to_vw, $floor, $gap, $pad) = $regime;
 
         for ($vw = $from_vw; ; ) {
             $content = min($vw - $pad, LUMEN_GRID_MAX_CONTENT);
@@ -866,6 +870,7 @@ function lumen_get_grid_bands() {
                 'max_vw'  => $max_vw,
                 'columns' => $columns,
                 'gap'     => $gap,
+                'pad'     => $pad,
                 'slot'    => ($top_content - ($columns - 1) * $gap) / $columns,
             );
 
@@ -921,13 +926,15 @@ function lumen_get_grid_sizes_attr() {
         if (null === $band['max_vw']) {
             $value = sprintf('%dpx', (int) ceil($band['slot']));
         } elseif (1 === $band['columns']) {
-            // The page padding is left out rather than subtracted. It is under
-            // 10% of a single column and erring wide is the safe direction.
+            // Exact where the grid is full bleed, since the column is then the
+            // viewport. Where it is not, the page padding is left out rather
+            // than subtracted: it is under 10% of a single column, and erring
+            // wide is the safe direction.
             $value = '100vw';
         } else {
             $value = sprintf(
                 'calc((100vw - %dpx) / %d)',
-                LUMEN_GRID_PAGE_PADDING + ($band['columns'] - 1) * $band['gap'],
+                $band['pad'] + ($band['columns'] - 1) * $band['gap'],
                 $band['columns']
             );
         }

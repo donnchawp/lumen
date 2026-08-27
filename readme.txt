@@ -3,7 +3,7 @@ Contributors: donncha
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 1.6.1
+Stable tag: 1.6.2
 License: GNU General Public License v2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -51,6 +51,9 @@ Lumen is distributed under the terms of the GNU GPL version 2 or later.
 This theme bundles no third-party assets, fonts, images, or libraries. It uses the system font stack via CSS and ships no JavaScript of its own.
 
 == Changelog ==
+
+= 1.6.2 =
+* The photo column width setting applies on phones too. Below 769px the grid capped its minimum column at 250px, which was right when the width was hardcoded at 300 and became wrong the moment it turned into a setting. A site asking for 450px columns got two 254px photos on a 523px phone rather than one 523px photo, and 1.6.1's full bleed made that worse by handing the grid exactly the width it needed to fit the second column. The cap is gone, so the number in the Customizer means the same thing at every width.
 
 = 1.6.1 =
 * Photos run edge to edge on any phone, not just a narrow one. 1.6.0 gated the full-bleed grid at 480px, which looks like a phone boundary and is not one: Android's display size setting scales the density, so the same handset reports 412px at its default and 523px a couple of notches down. A Galaxy S23 Ultra at 523px sat just outside it and kept the padding. Full bleed is tied to the narrow layout breakpoint now, so it holds however wide a phone decides it is, and the two-column tablet range gets it too.

@@ -3,7 +3,7 @@ Theme Name: Lumen
 Author: Donncha O Caoimh
 Author URI: https://odd.blog/
 Description: A dark, gallery-first photography theme for photoblogs. Features a responsive CSS Grid layout, featured image hover overlays, and a dedicated section for text-only posts at the bottom of archive pages.
-Version: 1.6.1
+Version: 1.6.2
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
@@ -1085,10 +1085,14 @@ img {
     }
 
     .photo-grid {
-        /* Capped rather than replaced: 250px holds a second column down to
-           564px, which any wider floor gives up sooner, but a setting below
-           250 should not be widened back up here. */
-        grid-template-columns: repeat(auto-fill, minmax(min(var(--photo-grid-min, 450px), 250px), 1fr));
+        /* No column-width override here. This used to cap the minmax() floor at
+           250px so a second column would hold down to 564px, which made sense
+           when the width was hardcoded at 300. Once it became a setting the cap
+           was overriding the setting: at 523px, a phone asking for 450px
+           columns got two 254px ones instead of a single 523px one, and going
+           full bleed made that worse by handing the grid the width it needed to
+           fit the extra column. The base rule governs at every width now, so
+           the number in the Customizer means the same thing everywhere. */
         gap: 1rem;
 
         /* Full bleed for the whole narrow regime, not for a guessed phone
