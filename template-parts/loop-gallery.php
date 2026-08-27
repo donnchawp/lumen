@@ -59,6 +59,11 @@ update_post_thumbnail_cache();
     // How many leading images core would exclude from lazy-loading in a normal
     // loop. Read from core rather than hardcoded, so a site filtering the
     // threshold still gets what it asked for.
+    //
+    // In core since 5.9, so it sits inside the theme's declared 6.0 floor and
+    // needs no function_exists() guard. Not to be confused with
+    // wp_get_loading_optimization_attributes() named in the note above, which is
+    // 6.3 and is only described here, never called.
     $lumen_eager_count = wp_omit_loading_attr_threshold();
 
     // The same for every card, so it is built once rather than per image.

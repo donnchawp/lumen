@@ -1,9 +1,9 @@
 === Lumen ===
 Contributors: donncha
 Requires at least: 6.0
-Tested up to: 6.6
+Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.6.4
+Stable tag: 1.6.5
 License: GNU General Public License v2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -51,6 +51,9 @@ Lumen is distributed under the terms of the GNU GPL version 2 or later.
 This theme bundles no third-party assets, fonts, images, or libraries. It uses the system font stack via CSS and ships no JavaScript of its own.
 
 == Changelog ==
+
+= 1.6.5 =
+* Tested up to 7.1, which is the version it has been running on for a while. No code changes. Requires at least stays at 6.0, which is correct: the newest core function the theme calls is wp_omit_loading_attr_threshold(), and that has been in WordPress since 5.9.
 
 = 1.6.4 =
 * Housekeeping, with nothing to see on the site. The page frame is now one number in one place instead of the same number written out at a dozen selectors: the site width, the reading column and the page gutter are custom properties, and the widths derived from them, like the 1304px images in post content break out to, are written as the subtraction rather than the answer. Widening the frame used to mean editing five rules and a PHP constant and hoping you found them all.
