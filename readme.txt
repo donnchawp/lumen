@@ -3,7 +3,7 @@ Contributors: donncha
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 1.4.0
+Stable tag: 1.5.0
 License: GNU General Public License v2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,7 +20,7 @@ A dark, gallery-first WordPress theme designed for photoblogs. Features a respon
 == Features ==
 - Dark, minimal design that puts photos first
 - Responsive CSS Grid gallery (auto-adjusts columns)
-- Portrait-aware image sizing (tall photos get a portrait crop and a taller grid cell)
+- Photos shown whole in the grid, at their own shape, never cropped to fit a cell
 - Overlay with title and date, shown on hover, on keyboard focus, and always on touch devices
 - Text-only posts section on archive pages
 - Customizer support for background color, accent color and photo grid column width
@@ -51,6 +51,12 @@ Lumen is distributed under the terms of the GNU GPL version 2 or later.
 This theme bundles no third-party assets, fonts, images, or libraries. It uses the system font stack via CSS and ships no JavaScript of its own.
 
 == Changelog ==
+
+= 1.5.0 =
+* Grid photos are shown whole rather than cropped to fit the cell. A card took a fixed 4:3 shape, or 3:4 for a tall photo, and object-fit cut the frame down to it. Both orientations are wider than their card, so the cut always came off the sides: a photo with a border painted into it lost its left and right edges and kept top and bottom, which is why the borders looked lopsided. Cards take the shape of their photo now and all four edges show.
+* Rows are ragged, and slightly less ragged than they were. At a 664px column a landscape card used to be 498px tall beside an 885px portrait. At their own shapes they are 448px and 826px.
+* The grid image sizes are not cropped any more, and there is no separate portrait size, because an uncropped width bound already fits either orientation. lumen-grid and lumen-grid-large replace the four sizes 1.3.0 registered. Run Regenerate Thumbnails: anything already cut is a hard crop and keeps its cropped edges until you do.
+* A comment describing the grid sizes ended up stranded above the palette constants in 1.4.0, documenting the wrong thing. It is back where it belongs.
 
 = 1.4.0 =
 * The page background is set under Appearance > Customize > Colors, and every other colour is worked out from it. Pick something light and the text, panels and borders go dark to match instead of leaving dark-on-dark. The default is unchanged and renders identically to 1.3.1, down to the hex value of every token.

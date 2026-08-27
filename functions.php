@@ -43,14 +43,6 @@ const LUMEN_GRID_NARROW_BP    = 768;
 const LUMEN_GRID_ONE_COL_BP   = 480;  // At and below this the grid is forced to one column.
 
 /**
- * The two grid crops.
- *
- * Both are 4:3 (and their portrait counterparts 3:4), which is what puts them
- * in the same srcset: core only offers alternatives whose aspect ratio matches
- * the size being rendered. The pair therefore gives the browser a real choice
- * rather than the single candidate a lone crop leaves it with.
- */
-/**
  * The palette the theme was designed around.
  *
  * Every colour below is derived from the Customizer's background colour rather
@@ -103,10 +95,24 @@ const LUMEN_MIN_CONTRAST = 4.5;
  */
 const LUMEN_OVERLAY_BACKGROUND = '#1a1a1a';
 
-const LUMEN_GRID_CROP_WIDTH        = 800;
-const LUMEN_GRID_CROP_HEIGHT       = 600;
-const LUMEN_GRID_CROP_LARGE_WIDTH  = 1400;
-const LUMEN_GRID_CROP_LARGE_HEIGHT = 1050;
+/**
+ * The two grid image sizes.
+ *
+ * Neither is cropped. A card takes the shape of its own photo, so the only
+ * thing a size has to guarantee is width: the height follows from the photo and
+ * the card follows from the height. The height bound is set high enough never
+ * to bind, which is how you ask WordPress for "this wide, whatever tall".
+ *
+ * Being uncropped is also what keeps them in one srcset. Core only offers
+ * alternatives whose aspect ratio matches the size being rendered, and an
+ * uncropped size always carries the original's ratio, so both of these and the
+ * original itself are candidates for the same image. That matters more than it
+ * looks: an original too small to make the large size still ends up offered at
+ * its own width, which is usually wider than the small size.
+ */
+const LUMEN_GRID_WIDTH       = 800;
+const LUMEN_GRID_LARGE_WIDTH = 1400;
+const LUMEN_GRID_ANY_HEIGHT  = 9999;
 
 /**
  * Theme Setup
@@ -133,14 +139,13 @@ function lumen_setup() {
     // Set default featured image size
     set_post_thumbnail_size(600, 450, true);
 
-    // Grid crops, in landscape and portrait, at two widths. Which one is asked
-    // for depends on how wide the configured columns can get; see
-    // lumen_get_grid_image_size(). Both widths stay registered whichever is in
-    // use, because they are also each other's srcset candidates.
-    add_image_size('lumen-grid', LUMEN_GRID_CROP_WIDTH, LUMEN_GRID_CROP_HEIGHT, true);
-    add_image_size('lumen-grid-portrait', LUMEN_GRID_CROP_HEIGHT, LUMEN_GRID_CROP_WIDTH, true);
-    add_image_size('lumen-grid-large', LUMEN_GRID_CROP_LARGE_WIDTH, LUMEN_GRID_CROP_LARGE_HEIGHT, true);
-    add_image_size('lumen-grid-portrait-large', LUMEN_GRID_CROP_LARGE_HEIGHT, LUMEN_GRID_CROP_LARGE_WIDTH, true);
+    // Grid images at two widths, uncropped. Which one is asked for depends on
+    // how wide the configured columns can get; see lumen_get_grid_image_size().
+    // Both stay registered whichever is in use, because they are also each
+    // other's srcset candidates. There is no separate portrait size any more:
+    // an uncropped width bound already fits either orientation.
+    add_image_size('lumen-grid', LUMEN_GRID_WIDTH, LUMEN_GRID_ANY_HEIGHT, false);
+    add_image_size('lumen-grid-large', LUMEN_GRID_LARGE_WIDTH, LUMEN_GRID_ANY_HEIGHT, false);
     add_image_size('lumen-single', 1400, 900, false);
 
     // Add theme support for title tag
@@ -749,44 +754,34 @@ function lumen_is_photo_post($post = null) {
 /**
  * Which registered image size a post's featured image should use in the grid.
  *
- * Portrait photos get a portrait crop and a taller cell; everything else gets
- * the landscape crop. Deciding that is data logic rather than markup, and it
- * belongs beside lumen_is_photo_post() which answers the related question of
- * whether a post reaches the grid at all.
- *
- * The 1.2 threshold, rather than a plain height > width, keeps nearly square
- * photos in the landscape cell where they crop better.
+ * Orientation used to be decided here, because a portrait photo was given a
+ * portrait crop and a taller cell. Nothing is cropped now and a card takes the
+ * shape of its photo, so both orientations want the same size and there is
+ * nothing left to choose but width.
  *
  * @param int|WP_Post|null $post Optional. Post ID or object. Default global $post.
- * @return array {
- *     @type string $0 Registered image size name.
- *     @type string $1 Card class, including the portrait modifier when it applies.
- * }
+ * @return string Registered image size name.
  */
 function lumen_get_grid_image_size($post = null) {
     $metadata = wp_get_attachment_metadata(get_post_thumbnail_id($post));
 
-    $is_portrait = !empty($metadata['height'])
-        && !empty($metadata['width'])
-        && ($metadata['height'] / $metadata['width']) > 1.2;
+    // Both sizes are in the srcset either way, so this only decides the
+    // fallback a browser without srcset support gets, and where the browser
+    // starts from. Above an 800px column the smaller one would be upscaled, so
+    // hand over the large one.
+    $large = lumen_get_grid_widest_column() > LUMEN_GRID_WIDTH;
 
-    // Which crop to name as the src. Both crops are in the srcset either way,
-    // so this only decides the fallback a browser without srcset support gets,
-    // and where the browser starts from. Above a 800px column the small crop
-    // would be upscaled, so hand over the large one.
-    $large = lumen_get_grid_widest_column() > LUMEN_GRID_CROP_WIDTH;
-    $size  = $is_portrait ? 'lumen-grid-portrait' : 'lumen-grid';
-
-    // The large crops only exist for photos uploaded or regenerated since they
-    // were registered. Asking for one that was never cut makes core fall back
-    // to the full-size original, which on a photoblog is several megabytes, so
-    // check the attachment actually has it and keep the small crop if not. A
-    // soft photo is the better failure.
-    if ($large && !empty($metadata['sizes'][$size . '-large'])) {
-        $size .= '-large';
+    // The large size only exists for photos big enough to make it that have
+    // been regenerated since it was registered. Naming one that was never made
+    // sends core to the full-size original in its place, which on a photoblog
+    // is several megabytes, so check the attachment actually has it. Falling
+    // back to the smaller file, and letting the srcset offer the original where
+    // it fits, is the better failure.
+    if ($large && !empty($metadata['sizes']['lumen-grid-large'])) {
+        return 'lumen-grid-large';
     }
 
-    return array($size, $is_portrait ? 'photo-card photo-card--portrait' : 'photo-card');
+    return 'lumen-grid';
 }
 
 /**

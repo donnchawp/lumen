@@ -67,7 +67,7 @@ update_post_thumbnail_cache();
     <div class="photo-grid">
         <?php foreach ($lumen_photo_posts as $lumen_index => $post) : setup_postdata($post); ?>
             <?php
-            list($lumen_size, $lumen_card_class) = lumen_get_grid_image_size();
+            $lumen_size = lumen_get_grid_image_size();
 
             // Breakpoints follow where the grid actually changes column count,
             // which is not where the CSS breakpoints are, and moves with the
@@ -91,7 +91,7 @@ update_post_thumbnail_cache();
                 }
             }
             ?>
-            <article id="post-<?php the_ID(); ?>" <?php post_class($lumen_card_class); ?>>
+            <article id="post-<?php the_ID(); ?>" <?php post_class('photo-card'); ?>>
                 <a href="<?php the_permalink(); ?>">
                     <?php
                     // No alt is passed: core uses the alt text set in the Media

@@ -3,7 +3,7 @@ Theme Name: Lumen
 Author: Donncha O Caoimh
 Author URI: https://odd.blog/
 Description: A dark, gallery-first photography theme for photoblogs. Features a responsive CSS Grid layout, featured image hover overlays, and a dedicated section for text-only posts at the bottom of archive pages.
-Version: 1.4.0
+Version: 1.5.0
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
@@ -155,26 +155,23 @@ img {
        overflowing a viewport narrower than one column. */
     grid-template-columns: repeat(auto-fill, minmax(min(var(--photo-grid-min, 450px), 100%), 1fr));
     gap: 1.5rem;
-    /* Grid items stretch by default, and stretch beats aspect-ratio. Without
-       this, one portrait card sets its row's height and every landscape card
-       beside it gets stretched to 3:4 and cropped by object-fit. Rows end
-       ragged instead, which is the point of having portrait cards at all. */
+    /* Grid items stretch to the tallest in their row by default. Without this,
+       a portrait photo beside a landscape one would stretch the landscape card
+       to match and leave a band of card background under its image. Rows end
+       ragged instead, which is what showing photos at their own shape means. */
     align-items: start;
 }
 
+/* No aspect-ratio: the card takes the shape of its photo. Forcing 4:3 (and 3:4
+   for tall photos) meant object-fit cropped every frame back to that shape, and
+   since the photos are wider than their card in both orientations, it always
+   came off the sides. A photo with a border painted into it lost the left and
+   right edges and kept top and bottom, which is how the asymmetry showed up. */
 .photo-card {
     position: relative;
     overflow: hidden;
     border-radius: 4px;
     background: var(--bg-tertiary);
-    aspect-ratio: 4 / 3;
-}
-
-/* Tall photos get the portrait crop from lumen-grid-portrait. Without this the
-   card stays 4:3 and crops the portrait image back to landscape, losing more of
-   the frame than using the landscape size would have. */
-.photo-card--portrait {
-    aspect-ratio: 3 / 4;
 }
 
 /* The anchor fills the card so the whole tile is clickable, not just the
@@ -192,10 +189,15 @@ img {
     outline-offset: -4px;
 }
 
+/* height auto rather than 100%, so the image sets the card's height instead of
+   being cut to fit one. core writes width and height attributes on the img, so
+   the browser reserves the right space from the ratio before the file arrives
+   and nothing shifts on load. display block keeps the inline baseline gap from
+   adding a stripe of card background under every photo. */
 .photo-card img {
+    display: block;
     width: 100%;
-    height: 100%;
-    object-fit: cover;
+    height: auto;
     transition: transform 0.5s ease;
 }
 
