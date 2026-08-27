@@ -10,6 +10,52 @@ if (!defined('ABSPATH')) {
 }
 
 /**
+ * Photo grid column width, in pixels.
+ *
+ * The Customizer setting is the grid's minimum column width, not a column
+ * count. The grid fits as many columns of at least this width as the container
+ * holds and then stretches them to fill it, so a larger value means fewer and
+ * bigger photos, and the count still falls on its own as the viewport narrows.
+ *
+ * 600 is the ceiling because two 600px columns plus the 24px gap need 1224px
+ * and .site-main tops out at a 1352px content box. Anything above roughly 650
+ * would leave a single column stretched across the full width at every
+ * viewport, which is a different layout rather than a denser one.
+ */
+const LUMEN_GRID_MIN_WIDTH_DEFAULT = 450;
+const LUMEN_GRID_MIN_WIDTH_LOWER   = 200;
+const LUMEN_GRID_MIN_WIDTH_UPPER   = 600;
+
+/**
+ * Grid geometry, mirroring style.css.
+ *
+ * lumen_get_grid_bands() works out where the grid changes column count so the
+ * sizes attribute can describe it. That calculation is only as true as these
+ * numbers are, so changing the grid rules in style.css means changing these to
+ * match.
+ */
+const LUMEN_GRID_MAX_CONTENT  = 1352; // .site-main max-width 1400 less its 2 x 1.5rem padding.
+const LUMEN_GRID_PAGE_PADDING = 48;   // 2 x 1.5rem.
+const LUMEN_GRID_GAP          = 24;   // 1.5rem, above 768px.
+const LUMEN_GRID_GAP_NARROW   = 16;   // 1rem, at 768px and below.
+const LUMEN_GRID_NARROW_MIN   = 250;  // Cap on the minmax() floor at 768px and below.
+const LUMEN_GRID_NARROW_BP    = 768;
+const LUMEN_GRID_ONE_COL_BP   = 480;  // At and below this the grid is forced to one column.
+
+/**
+ * The two grid crops.
+ *
+ * Both are 4:3 (and their portrait counterparts 3:4), which is what puts them
+ * in the same srcset: core only offers alternatives whose aspect ratio matches
+ * the size being rendered. The pair therefore gives the browser a real choice
+ * rather than the single candidate a lone crop leaves it with.
+ */
+const LUMEN_GRID_CROP_WIDTH        = 800;
+const LUMEN_GRID_CROP_HEIGHT       = 600;
+const LUMEN_GRID_CROP_LARGE_WIDTH  = 1400;
+const LUMEN_GRID_CROP_LARGE_HEIGHT = 1050;
+
+/**
  * Theme Setup
  */
 function lumen_setup() {
@@ -34,9 +80,14 @@ function lumen_setup() {
     // Set default featured image size
     set_post_thumbnail_size(600, 450, true);
 
-    // Add custom image size for grid
-    add_image_size('lumen-grid', 800, 600, true);
-    add_image_size('lumen-grid-portrait', 600, 800, true);
+    // Grid crops, in landscape and portrait, at two widths. Which one is asked
+    // for depends on how wide the configured columns can get; see
+    // lumen_get_grid_image_size(). Both widths stay registered whichever is in
+    // use, because they are also each other's srcset candidates.
+    add_image_size('lumen-grid', LUMEN_GRID_CROP_WIDTH, LUMEN_GRID_CROP_HEIGHT, true);
+    add_image_size('lumen-grid-portrait', LUMEN_GRID_CROP_HEIGHT, LUMEN_GRID_CROP_WIDTH, true);
+    add_image_size('lumen-grid-large', LUMEN_GRID_CROP_LARGE_WIDTH, LUMEN_GRID_CROP_LARGE_HEIGHT, true);
+    add_image_size('lumen-grid-portrait-large', LUMEN_GRID_CROP_LARGE_HEIGHT, LUMEN_GRID_CROP_LARGE_WIDTH, true);
     add_image_size('lumen-single', 1400, 900, false);
 
     // Add theme support for title tag
@@ -93,17 +144,24 @@ function lumen_scripts() {
         wp_get_theme()->get('Version')
     );
 
-    // Accent colour from the Customizer, applied as a custom property override.
+    // Customizer values that reach the stylesheet as custom property overrides.
+    $properties = array(
+        '--photo-grid-min' => lumen_get_grid_min_width() . 'px',
+    );
+
     $accent = sanitize_hex_color(get_theme_mod('lumen_accent_color', '#ffffff'));
 
     if ($accent) {
-        $accent = lumen_ensure_contrast($accent, lumen_accent_background());
-
-        wp_add_inline_style(
-            'lumen-style',
-            ':root{--accent:' . $accent . ';}'
-        );
+        $properties['--accent'] = lumen_ensure_contrast($accent, lumen_accent_background());
     }
+
+    $declarations = '';
+
+    foreach ($properties as $property => $value) {
+        $declarations .= $property . ':' . $value . ';';
+    }
+
+    wp_add_inline_style('lumen-style', ':root{' . $declarations . '}');
 
     // Threaded comment replies
     if (is_singular() && comments_open() && get_option('thread_comments')) {
@@ -127,6 +185,53 @@ function lumen_customize_register($wp_customize) {
         'description' => __('Used for the site title, link hovers and focus outlines. Dark colours are lightened automatically so they stay readable on the dark background.', 'lumen'),
         'section'     => 'colors',
     )));
+
+    $wp_customize->add_section('lumen_photo_grid', array(
+        'title'    => __('Photo Grid', 'lumen'),
+        'priority' => 40,
+    ));
+
+    $wp_customize->add_setting('lumen_grid_min_width', array(
+        'default'           => LUMEN_GRID_MIN_WIDTH_DEFAULT,
+        'sanitize_callback' => 'lumen_sanitize_grid_min_width',
+        'transport'         => 'refresh',
+    ));
+
+    $wp_customize->add_control('lumen_grid_min_width', array(
+        'label'       => __('Column width', 'lumen'),
+        'description' => __('The narrowest a photo column may be, in pixels. The grid fits as many columns as will fit and stretches them to fill the row, so a larger number means fewer, bigger photos. 300 gives four across on a wide screen, 350 gives three and 450 gives two.', 'lumen'),
+        'section'     => 'lumen_photo_grid',
+        'type'        => 'number',
+        'input_attrs' => array(
+            'min'  => LUMEN_GRID_MIN_WIDTH_LOWER,
+            'max'  => LUMEN_GRID_MIN_WIDTH_UPPER,
+            'step' => 10,
+        ),
+    ));
+}
+
+/**
+ * Clamp a photo grid column width to the range the layout and crops support.
+ *
+ * Used as the setting's sanitize_callback, and again on read, because a value
+ * stored before the bounds moved would otherwise escape them.
+ *
+ * @param mixed $value Raw setting value.
+ * @return int Column width in pixels.
+ */
+function lumen_sanitize_grid_min_width($value) {
+    return min(LUMEN_GRID_MIN_WIDTH_UPPER, max(LUMEN_GRID_MIN_WIDTH_LOWER, (int) $value));
+}
+
+/**
+ * The configured photo grid column width, in pixels.
+ *
+ * @return int
+ */
+function lumen_get_grid_min_width() {
+    return lumen_sanitize_grid_min_width(
+        get_theme_mod('lumen_grid_min_width', LUMEN_GRID_MIN_WIDTH_DEFAULT)
+    );
 }
 add_action('customize_register', 'lumen_customize_register');
 
@@ -351,9 +456,186 @@ function lumen_get_grid_image_size($post = null) {
         && !empty($metadata['width'])
         && ($metadata['height'] / $metadata['width']) > 1.2;
 
-    if ($is_portrait) {
-        return array('lumen-grid-portrait', 'photo-card photo-card--portrait');
+    // Which crop to name as the src. Both crops are in the srcset either way,
+    // so this only decides the fallback a browser without srcset support gets,
+    // and where the browser starts from. Above a 800px column the small crop
+    // would be upscaled, so hand over the large one.
+    $large = lumen_get_grid_widest_column() > LUMEN_GRID_CROP_WIDTH;
+    $size  = $is_portrait ? 'lumen-grid-portrait' : 'lumen-grid';
+
+    // The large crops only exist for photos uploaded or regenerated since they
+    // were registered. Asking for one that was never cut makes core fall back
+    // to the full-size original, which on a photoblog is several megabytes, so
+    // check the attachment actually has it and keep the small crop if not. A
+    // soft photo is the better failure.
+    if ($large && !empty($metadata['sizes'][$size . '-large'])) {
+        $size .= '-large';
     }
 
-    return array('lumen-grid', 'photo-card');
+    return array($size, $is_portrait ? 'photo-card photo-card--portrait' : 'photo-card');
+}
+
+/**
+ * The viewport bands the photo grid holds a steady column count across.
+ *
+ * auto-fill adds a column the moment one more fits, so the rendered column
+ * width sawtooths as the viewport grows: it climbs while a count holds, then
+ * drops when the next column appears. A single number in the sizes attribute
+ * cannot describe that, and gets further from the truth the wider the columns
+ * are configured to be. At 600px, for instance, the grid is a single column
+ * from 769px to 1271px and two columns above that, so a value taken from the
+ * widest viewport would understate the column by half across every laptop.
+ *
+ * Bands come back in ascending viewport order. 'slot' is the widest the column
+ * gets within the band, which is at the top of it.
+ *
+ * @return array<int, array{min_vw:int, max_vw:?int, columns:int, gap:int, slot:float}>
+ */
+function lumen_get_grid_bands() {
+    static $cache = array();
+
+    $min_width = lumen_get_grid_min_width();
+
+    if (isset($cache[$min_width])) {
+        return $cache[$min_width];
+    }
+
+    $pad = LUMEN_GRID_PAGE_PADDING;
+
+    // style.css forces one column at 480px and below whatever the setting is.
+    $bands = array(
+        array(
+            'min_vw'  => 0,
+            'max_vw'  => LUMEN_GRID_ONE_COL_BP,
+            'columns' => 1,
+            'gap'     => 0,
+            'slot'    => LUMEN_GRID_ONE_COL_BP - $pad,
+        ),
+    );
+
+    // The two regimes above it, as [first viewport, last viewport or null,
+    // minmax() floor, gap]. The narrow one caps the floor and tightens the gap.
+    $regimes = array(
+        array(
+            LUMEN_GRID_ONE_COL_BP + 1,
+            LUMEN_GRID_NARROW_BP,
+            min($min_width, LUMEN_GRID_NARROW_MIN),
+            LUMEN_GRID_GAP_NARROW,
+        ),
+        array(
+            LUMEN_GRID_NARROW_BP + 1,
+            null,
+            $min_width,
+            LUMEN_GRID_GAP,
+        ),
+    );
+
+    foreach ($regimes as $regime) {
+        list($from_vw, $to_vw, $floor, $gap) = $regime;
+
+        for ($vw = $from_vw; ; ) {
+            $content = min($vw - $pad, LUMEN_GRID_MAX_CONTENT);
+            $columns = max(1, (int) floor(($content + $gap) / ($floor + $gap)));
+
+            // Where one more column first fits. Null once .site-main has stopped
+            // growing, because the count can no longer change after that.
+            $next_content = ($columns + 1) * $floor + $columns * $gap;
+            $max_vw       = $next_content > LUMEN_GRID_MAX_CONTENT
+                ? null
+                : $next_content + $pad - 1;
+
+            if (null !== $to_vw && (null === $max_vw || $max_vw > $to_vw)) {
+                $max_vw = $to_vw;
+            }
+
+            $top_content = null === $max_vw
+                ? LUMEN_GRID_MAX_CONTENT
+                : min($max_vw - $pad, LUMEN_GRID_MAX_CONTENT);
+
+            $bands[] = array(
+                'min_vw'  => $vw,
+                'max_vw'  => $max_vw,
+                'columns' => $columns,
+                'gap'     => $gap,
+                'slot'    => ($top_content - ($columns - 1) * $gap) / $columns,
+            );
+
+            if (null === $max_vw || (null !== $to_vw && $max_vw >= $to_vw)) {
+                break;
+            }
+
+            $vw = $max_vw + 1;
+        }
+    }
+
+    $cache[$min_width] = $bands;
+
+    return $bands;
+}
+
+/**
+ * The widest a photo grid column ever gets above the narrow breakpoint.
+ *
+ * Narrow viewports are excluded because their widest column belongs to a phone
+ * held at a width where the grid has collapsed to one, and sizing every crop
+ * for that would hand a large file to every desktop visitor as well.
+ *
+ * @return float Width in CSS pixels.
+ */
+function lumen_get_grid_widest_column() {
+    $widest = 0;
+
+    foreach (lumen_get_grid_bands() as $band) {
+        if ($band['min_vw'] > LUMEN_GRID_NARROW_BP) {
+            $widest = max($widest, $band['slot']);
+        }
+    }
+
+    return $widest;
+}
+
+/**
+ * The sizes attribute for photo grid images.
+ *
+ * One clause per band from lumen_get_grid_bands(), narrowest first, which is
+ * the order the attribute is evaluated in. Bands below the container cap are
+ * expressed as a calc() off the viewport so they stay exact as it grows; the
+ * last band is a fixed width, because .site-main has stopped growing by then.
+ *
+ * @return string
+ */
+function lumen_get_grid_sizes_attr() {
+    $clauses  = array();
+    $previous = null;
+
+    foreach (lumen_get_grid_bands() as $band) {
+        if (null === $band['max_vw']) {
+            $value = sprintf('%dpx', (int) ceil($band['slot']));
+        } elseif (1 === $band['columns']) {
+            // The page padding is left out rather than subtracted. It is under
+            // 10% of a single column and erring wide is the safe direction.
+            $value = '100vw';
+        } else {
+            $value = sprintf(
+                'calc((100vw - %dpx) / %d)',
+                LUMEN_GRID_PAGE_PADDING + ($band['columns'] - 1) * $band['gap'],
+                $band['columns']
+            );
+        }
+
+        // Neighbouring bands can land on the same value, most often the forced
+        // single column below 481px and a single column band just above it.
+        // Widen the clause already there rather than repeating it.
+        if ($value === $previous) {
+            array_pop($clauses);
+        }
+
+        $clauses[] = null === $band['max_vw']
+            ? $value
+            : sprintf('(max-width: %dpx) %s', $band['max_vw'], $value);
+
+        $previous = $value;
+    }
+
+    return implode(', ', $clauses);
 }

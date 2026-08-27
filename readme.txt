@@ -3,7 +3,7 @@ Contributors: donncha
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
-Stable tag: 1.2.4
+Stable tag: 1.3.0
 License: GNU General Public License v2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -23,7 +23,7 @@ A dark, gallery-first WordPress theme designed for photoblogs. Features a respon
 - Portrait-aware image sizing (tall photos get a portrait crop and a taller grid cell)
 - Overlay with title and date, shown on hover, on keyboard focus, and always on touch devices
 - Text-only posts section on archive pages
-- Customizer support for accent color
+- Customizer support for accent color and photo grid column width
 - Accessible, semantic HTML5 markup
 - No dependencies, no jQuery, no JavaScript of its own
 
@@ -51,6 +51,12 @@ Lumen is distributed under the terms of the GNU GPL version 2 or later.
 This theme bundles no third-party assets, fonts, images, or libraries. It uses the system font stack via CSS and ships no JavaScript of its own.
 
 == Changelog ==
+
+= 1.3.0 =
+* The photo grid's column width is set under Appearance > Customize > Photo Grid. It is the narrowest a column may be, from 200px to 600px, not a column count: the grid still fits as many columns as will fit and still drops to fewer as the window narrows, so a larger number means fewer and bigger photos. 300 gives four across on a wide screen, 350 gives three, 450 gives two.
+* The default is now 450px, which is two across on a wide screen where it used to be four. Set it back to 300 in the Customizer if you preferred the denser grid.
+* Grid photos are cut at 1400x1050 as well as 800x600, and both are offered to the browser together. A column wider than about 390px outgrew the single 800px crop, and the new default reaches 923px, so run Regenerate Thumbnails after upgrading. Until you do, photos keep their existing 800px crop and look soft at the larger sizes rather than being served the full-size original in its place.
+* The sizes hint is worked out from the column width rather than hardcoded. It named a single width for every viewport above 768px, which was already a compromise at the old fixed four columns and would have been wrong by half at the wider settings, where the grid holds one column across the whole laptop range.
 
 = 1.2.4 =
 * Images in posts really do render at their own width now. 1.2.3 only matched an image sitting in a bare figure, and the editor wraps an aligned image in a div around that figure, which is the shape almost every photo on a photoblog has. The rule matches both containers.

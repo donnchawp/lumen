@@ -60,6 +60,9 @@ update_post_thumbnail_cache();
     // loop. Read from core rather than hardcoded, so a site filtering the
     // threshold still gets what it asked for.
     $lumen_eager_count = wp_omit_loading_attr_threshold();
+
+    // The same for every card, so it is built once rather than per image.
+    $lumen_sizes = lumen_get_grid_sizes_attr();
     ?>
     <div class="photo-grid">
         <?php foreach ($lumen_photo_posts as $lumen_index => $post) : setup_postdata($post); ?>
@@ -67,14 +70,12 @@ update_post_thumbnail_cache();
             list($lumen_size, $lumen_card_class) = lumen_get_grid_image_size();
 
             // Breakpoints follow where the grid actually changes column count,
-            // which is not where the CSS breakpoints are. Below 564px the grid
-            // is one column: auto-fill with minmax(250px, 1fr) and a 1rem gap
-            // needs 516px of content box for a second column, and the container
-            // is the viewport less 3rem of padding. Advertising 50vw from 481px,
-            // as this did, told the browser to fetch a ~240px file for a slot
-            // 433px wide.
+            // which is not where the CSS breakpoints are, and moves with the
+            // configured column width. lumen_get_grid_sizes_attr() works both
+            // out; hardcoding them told the browser to fetch a ~240px file for
+            // a slot 433px wide.
             $lumen_image_attr = array(
-                'sizes' => '(max-width: 564px) 100vw, (max-width: 768px) 50vw, 400px',
+                'sizes' => $lumen_sizes,
             );
 
             // Core's viewport heuristic cannot run here (see the note above the

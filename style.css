@@ -3,7 +3,7 @@ Theme Name: Lumen
 Author: Donncha O Caoimh
 Author URI: https://odd.blog/
 Description: A dark, gallery-first photography theme for photoblogs. Features a responsive CSS Grid layout, featured image hover overlays, and a dedicated section for text-only posts at the bottom of archive pages.
-Version: 1.2.4
+Version: 1.3.0
 Requires at least: 6.0
 Tested up to: 6.6
 Requires PHP: 7.4
@@ -128,7 +128,10 @@ img {
 /* ========== PHOTO GRID ========== */
 .photo-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    /* --photo-grid-min is set inline from the Customizer; the fallback matches
+       LUMEN_GRID_MIN_WIDTH_DEFAULT. min(..., 100%) keeps a wide setting from
+       overflowing a viewport narrower than one column. */
+    grid-template-columns: repeat(auto-fill, minmax(min(var(--photo-grid-min, 450px), 100%), 1fr));
     gap: 1.5rem;
     /* Grid items stretch by default, and stretch beats aspect-ratio. Without
        this, one portrait card sets its row's height and every landscape card
@@ -1055,7 +1058,10 @@ img {
     }
 
     .photo-grid {
-        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        /* Capped rather than replaced: 250px holds a second column down to
+           564px, which any wider floor gives up sooner, but a setting below
+           250 should not be widened back up here. */
+        grid-template-columns: repeat(auto-fill, minmax(min(var(--photo-grid-min, 450px), 250px), 1fr));
         gap: 1rem;
     }
 
