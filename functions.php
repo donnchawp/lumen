@@ -764,6 +764,74 @@ function lumen_is_photo_post($post = null) {
 }
 
 /**
+ * The first media library image in a post's content, for posts that have no
+ * featured image of their own.
+ *
+ * Someone who inserts photos into a post without also setting a featured image
+ * gets an empty grid and every post in the notes list, because the whole theme
+ * keys on has_post_thumbnail(). Rather than teach the grid, the single template
+ * and the size chooser each to look somewhere else, this hooks the one value
+ * they all derive from: core builds has_post_thumbnail() out of
+ * get_post_thumbnail_id(), so filtering the id reaches every one of them, and
+ * update_post_thumbnail_cache() primes whatever it returns for free.
+ *
+ * The featured image always wins. This only runs for a post showing nothing in
+ * the grid today, so nothing that renders now changes.
+ *
+ * @param int              $thumbnail_id The post thumbnail id, 0 when there is none.
+ * @param int|WP_Post|null $post         Post id or object, already resolved by core.
+ * @return int Attachment id, or 0 to leave the post without a photo.
+ */
+function lumen_fallback_thumbnail_id($thumbnail_id, $post) {
+    if ($thumbnail_id) {
+        return $thumbnail_id;
+    }
+
+    $post = get_post($post);
+
+    if (!$post) {
+        return $thumbnail_id;
+    }
+
+    // The same post is asked for its thumbnail several times per card - once to
+    // partition it, once to choose a size, once to render - and every one of
+    // those would otherwise rescan the content.
+    static $cache = array();
+
+    if (isset($cache[$post->ID])) {
+        return $cache[$post->ID];
+    }
+
+    // Deliberately the stored content rather than the_content(). Running every
+    // content filter for each post in a loop just to find an id is far too much
+    // work for what it buys, and on this site an mu-plugin strips the first
+    // image out of the filtered output, so the raw column is also the more
+    // truthful place to look.
+    //
+    // The pattern is core's own, from wp_filter_content_tags() in media.php.
+    // Both editors write the class whenever an image comes from the library:
+    // the block editor as wp-image-${id}, the classic editor in
+    // get_image_send_to_editor(). An externally hosted image carries no id and
+    // is passed over, which is what we want - there is nothing to build a
+    // srcset from.
+    if (!preg_match('/wp-image-([0-9]+)/i', $post->post_content, $matches)) {
+        $cache[$post->ID] = 0;
+
+        return 0;
+    }
+
+    $attachment_id = (int) $matches[1];
+
+    // The class outlives the attachment: delete an image from the library and
+    // the markup keeps its id. Rendering that would put a broken card in the
+    // grid, which is a worse outcome than the note the post is today.
+    $cache[$post->ID] = wp_attachment_is_image($attachment_id) ? $attachment_id : 0;
+
+    return $cache[$post->ID];
+}
+add_filter('post_thumbnail_id', 'lumen_fallback_thumbnail_id', 10, 2);
+
+/**
  * Which registered image size a post's featured image should use in the grid.
  *
  * Orientation used to be decided here, because a portrait photo was given a
