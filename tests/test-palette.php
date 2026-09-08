@@ -5,6 +5,12 @@
  * @package Lumen
  */
 
+// Nothing here is part of rendering a page. On a live install these files sit
+// under wp-content/themes/, so without this a browser could run the suite.
+if (PHP_SAPI !== 'cli') {
+    exit;
+}
+
 require_once dirname(__DIR__) . '/inc/palette.php';
 
 // The default background must still reproduce the hand-tuned scheme exactly.

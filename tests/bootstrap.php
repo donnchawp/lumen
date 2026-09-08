@@ -8,6 +8,12 @@
  * @package Lumen
  */
 
+// Nothing here is part of rendering a page. On a live install these files sit
+// under wp-content/themes/, so without this a browser could run the suite.
+if (PHP_SAPI !== 'cli') {
+    exit;
+}
+
 define('ABSPATH', __DIR__ . '/');
 
 $GLOBALS['lumen_stub_mods']     = array();
