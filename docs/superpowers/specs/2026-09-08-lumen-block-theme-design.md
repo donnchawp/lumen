@@ -190,11 +190,15 @@ conversion whose feasibility was unproven.
 
 ## Migration
 
-Read the live value before generating anything:
+Read the live value before generating anything. inphotos.org is one site on a
+multisite network, and theme mods are per-site, so `--url` is required: without it
+WP-CLI reads the main site's mods and answers the wrong question without erroring.
 
 ```
-wp theme mod get lumen_background_color
+wp theme mod get lumen_background_color --url=https://inphotos.org
 ```
+
+Lumen is active on inphotos.org alone, so this is the only site to check.
 
 If it is unset or `#0a0a0a`, `styles/dark.json` reproduces what inphotos.org
 renders today and there is nothing to migrate. If it is some other colour, that
