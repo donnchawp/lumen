@@ -25,3 +25,25 @@ lumen_assert_same('#1a1a1a', $dark['--bg-tertiary'], 'dark --bg-tertiary');
 lumen_assert_same('#333333', $dark['--border-hover'], 'dark --border-hover');
 lumen_assert_same('#e5e5e5', $dark['--text-primary'], 'dark --text-primary');
 lumen_assert_same('#7c7c7c', $dark['--text-muted'], 'dark --text-muted');
+
+require_once dirname(__DIR__) . '/bin/generate-variation.php';
+
+$variation = lumen_build_variation('Dark', '#0a0a0a', '#ffffff');
+
+lumen_assert_same(3, $variation['version'], 'variation is theme.json v3');
+lumen_assert_same('Dark', $variation['title'], 'variation title');
+
+// The editor reads settings.color.palette to draw its pickers; style.css reads
+// the raw custom properties. A variation has to carry both or the two disagree.
+$slugs = array_column($variation['settings']['color']['palette'], 'slug');
+lumen_assert_true(in_array('bg-primary', $slugs, true), 'palette exposes bg-primary');
+lumen_assert_true(in_array('text-primary', $slugs, true), 'palette exposes text-primary');
+
+lumen_assert_true(
+    strpos($variation['styles']['css'], '--bg-primary:#0a0a0a') !== false,
+    'variation css carries --bg-primary'
+);
+lumen_assert_true(
+    strpos($variation['styles']['css'], '--text-muted:#7c7c7c') !== false,
+    'variation css carries --text-muted'
+);
