@@ -24,7 +24,12 @@ templates deleted. The floor rises from WordPress 6.0 to 6.6, which is what
 theme.json v3, block hooks and the current Query Loop behaviour require.
 
 The photo grid keeps its own PHP behind a dynamic block. The colour derivation
-keeps its WCAG contrast maths. Neither is rewritten, only rehomed.
+stops running at request time and becomes a build-time generator: Lumen ships two
+style variations, dark and light, whose tones the existing contrast maths produces.
+Neither body of code is rewritten, only rehomed.
+
+Lumen runs one site, inphotos.org, and is not distributed. Arbitrary background
+colours therefore serve a choice made once, which is what justifies retiring them.
 
 Out of scope: redesigning the theme. Every visual decision the theme makes today
 survives the conversion, and any that cannot is listed under Behaviour changes
@@ -38,10 +43,12 @@ below.
 lumen/
   style.css              2.0.0, Requires at least: 6.6 — slimmed to ~450 lines
   theme.json             v3
-  functions.php          palette bridge, block registration, image sizes, migration
+  functions.php          block registration, image sizes, title and thumbnail filters
+  styles/                dark.json, light.json — generated, checked in
   templates/             index, archive, single, page, search, 404 (.html)
   parts/                 header.html, footer.html
   blocks/photo-grid/     block.json, render.php, editor.js
+  bin/generate-variation.php   dev tool, not shipped
 ```
 
 These are deleted: `index.php`, `archive.php`, `single.php`, `page.php`,
@@ -53,38 +60,39 @@ grid CSS keeps working untouched. `editor-style.css` goes because theme.json and
 `style.css` together cover the editor canvas, which is what `add_editor_style()`
 existed to do.
 
-### The colour bridge
+### Style variations
 
-The palette functions in `functions.php:367-760` are kept verbatim. Only their
-input changes. Today `lumen_get_background_color()` reads a theme mod; in 2.0 it
-reads the background the user set in Site Editor → Styles.
+The palette functions in `functions.php:367-760` are not deleted. They move to
+`bin/generate-variation.php`, a development tool that stubs the three WordPress
+functions the maths actually touches — `sanitize_hex_color()`, `get_theme_mod()`
+and `apply_filters()` — and prints a style variation for a given background:
 
 ```
-Site Editor → Styles → Background
-        ↓
-wp_global_styles CPT
-        ↓
-lumen_source_background()      reads user data, static-cached
-        ↓
-lumen_palette()                existing contrast maths, unchanged
-        ↓
-wp_theme_json_data_theme       injects settings.color.palette
-        ↓
-editor pickers + front end
+php bin/generate-variation.php '#0a0a0a' > styles/dark.json
+php bin/generate-variation.php '#ffffff' > styles/light.json
 ```
 
-The filter runs during `WP_Theme_JSON_Resolver::get_theme_data()`. Reading user
-data from inside it is the one genuinely uncertain step in this design, because
-`get_user_data()` sits on a neighbouring resolver path and a re-entrant call would
-recurse. **Prove this with a throwaway probe before building anything on it.** If
-it recurses, read the `wp_global_styles` post content directly through a small
-helper and cache it in a static, which touches no resolver at all.
+The generated files are checked in. WordPress reads them as style variations, and
+the reader switches between them in Site Editor → Styles → Browse styles. Nothing
+derives colour at request time any more.
 
-Colour is the only thing the bridge carries. `--photo-grid-min`,
-`--site-max-width`, `--reading-width` and `--overlay-alpha` stay on
-`wp_add_inline_style()` where they are today. They are layout inputs that the grid
-CSS and the `sizes` attribute both read, not palette entries, and theme.json has
-nowhere honest to put them.
+This keeps the property that made the palette worth having. Both variations still
+come out of `lumen_ensure_contrast()`, so every tone's WCAG AA compliance is
+proven by the same code that proved it before, rather than eyeballed. Hand-tuning
+two palettes would have thrown that away, and is the version of this simplification
+worth avoiding.
+
+It also stays extensible. A third variation later is one command and a checked-in
+file, not a re-tune.
+
+`--photo-grid-min`, `--site-max-width`, `--reading-width` and `--overlay-alpha`
+stay on `wp_add_inline_style()` where they are today. They are layout inputs that
+the grid CSS and the `sizes` attribute both read, not palette entries, and
+theme.json has nowhere honest to put them.
+
+The generator must assert before writing. A variation whose tones fail
+`LUMEN_MIN_CONTRAST` should abort rather than emit a file, because a generated
+palette that nobody re-checks is worse than a runtime one that checks itself.
 
 ### The photo-grid block
 
@@ -153,7 +161,7 @@ emits `.photo-grid` and `.photo-card`.
 
 ## Behaviour changes
 
-Three behaviours cannot be ported directly. Each needs a deliberate replacement,
+Four behaviours cannot be ported directly. Each needs a deliberate replacement,
 and each one changes something.
 
 **Untitled post fallback.** `lumen_get_display_title()` supplies a title for
@@ -174,19 +182,32 @@ caller derives from.
 time the Site Editor loads. That is one manual step on inphotos.org, not an
 automatic migration.
 
+**Arbitrary background colours.** The Customizer control and the runtime
+derivation both go. The reader chooses between two generated variations instead of
+any hex. This is a feature removal, taken deliberately: the theme runs one site, so
+the derivation served a decision made once, and it was the only part of the
+conversion whose feasibility was unproven.
+
 ## Migration
 
-A version-stamped routine on `after_switch_theme`, guarded by an option so it runs
-once, reads `get_theme_mod('lumen_background_color')` and writes it into the user
-Global Styles background.
+Read the live value before generating anything:
 
-Without it inphotos.org loses its background colour the moment the theme updates,
-and every derived tone with it. No widget areas are registered, so nothing else
-needs carrying across.
+```
+wp theme mod get lumen_background_color
+```
 
-This step does not reverse. Switching back to classic Lumen will not restore the
-theme mod from Global Styles. Take a database backup of inphotos.org before the
-update lands; a git tag covers the theme but not the site.
+If it is unset or `#0a0a0a`, `styles/dark.json` reproduces what inphotos.org
+renders today and there is nothing to migrate. If it is some other colour, that
+colour is the one to generate `styles/dark.json` from, so the site looks unchanged
+across the update.
+
+Nothing is written to the database. The theme mod is simply left behind, which
+means switching back to classic Lumen restores the current appearance intact. No
+widget areas are registered, so nothing else needs carrying across.
+
+Take a database backup of inphotos.org before the update lands anyway. The
+navigation menu import is a one-way step, and a git tag covers the theme but not
+the site.
 
 ## Verification
 
@@ -198,17 +219,25 @@ testing.
 - A WP Playground blueprint mounting the theme against a sample import, checking
   the photo and text partition, pagination across more than one page, and the
   `loading` and `fetchpriority` attributes in the rendered HTML.
-- A chosen background still produces tones that pass WCAG AA, which is the whole
-  point of keeping the derivation.
+- Both generated variations pass WCAG AA, asserted by the generator rather than
+  checked by eye.
+- The dark variation renders inphotos.org indistinguishably from classic Lumen.
 - ActivityPub reactions appear on a single post without any theme-side rendering
   code, which is the problem that prompted the conversion.
 
 ## Build order
 
-Riskiest first, so a failure changes the design instead of wasting a rewrite.
+No step here is speculative. An earlier draft of this design kept the derivation
+at request time and injected it into theme.json through a filter, which put an
+unproven question about WordPress's theme.json resolver at the head of the work.
+Generating the variations ahead of time removes that question entirely: the maths
+is known to run standalone, touching only `sanitize_hex_color()`,
+`get_theme_mod()` and `apply_filters()`.
 
-1. Palette bridge probe, then theme.json and the migration routine
-2. The `photo-grid` block, porting `loop-gallery.php`
-3. Templates and parts
-4. The CSS split
-5. Delete the classic templates, bump the version, run Theme Check
+1. `bin/generate-variation.php`, then `styles/dark.json` and `styles/light.json`
+2. theme.json
+3. The `photo-grid` block, porting `loop-gallery.php`
+4. Templates and parts
+5. The CSS split
+6. Delete the classic templates and the Customizer section, bump the version, run
+   Theme Check
