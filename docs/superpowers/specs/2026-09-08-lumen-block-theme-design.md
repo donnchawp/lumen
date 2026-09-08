@@ -161,7 +161,7 @@ emits `.photo-grid` and `.photo-card`.
 
 ## Behaviour changes
 
-Four behaviours cannot be ported directly. Each needs a deliberate replacement,
+Five behaviours cannot be ported directly. Each needs a deliberate replacement,
 and each one changes something.
 
 **Untitled post fallback.** `lumen_get_display_title()` supplies a title for
@@ -181,6 +181,12 @@ caller derives from.
 `core/navigation`. WordPress offers to import the existing classic menu the first
 time the Site Editor loads. That is one manual step on inphotos.org, not an
 automatic migration.
+
+**The front page heading.** `header.php:21-28` promotes the site title to `<h1>`
+when `is_front_page() && is_home()` and drops it to `<p>` everywhere else, because
+on the front page no post title owns the heading. A template part is static and
+cannot make that choice. Two header parts resolve it: `header.html` at level 0 and
+`header-home.html` at level 1, the latter referenced only by `templates/index.html`.
 
 **Arbitrary background colours.** The Customizer control and the runtime
 derivation both go. The reader chooses between two generated variations instead of
