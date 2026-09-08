@@ -64,3 +64,13 @@ lumen_assert_true(
     count(lumen_assert_variation_contrast($broken)) > 0,
     'a low-contrast tone is reported'
 );
+
+// The checked-in files are generated, so they can silently fall behind a change
+// to the maths. This fails the moment they do.
+foreach (array('dark' => '#0a0a0a', 'light' => '#ffffff') as $name => $background) {
+    $path  = dirname(__DIR__) . '/styles/' . $name . '.json';
+    $onDisk = json_decode(file_get_contents($path), true);
+    $fresh  = lumen_build_variation($onDisk['title'], $background, '#ffffff');
+
+    lumen_assert_same($fresh, $onDisk, $name . '.json matches the generator');
+}
