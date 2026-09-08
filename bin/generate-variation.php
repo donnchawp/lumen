@@ -48,6 +48,37 @@ const LUMEN_PALETTE_LABELS = array(
 );
 
 /**
+ * Every text tone checked against the surface it is actually painted on.
+ *
+ * LUMEN_TEXT_REFERENCE names that surface per tone, and it is not always the
+ * page background: --text-muted is painted on --bg-secondary, so checking it
+ * against --bg-primary would pass a tone that fails where it is really used.
+ *
+ * @param array<string,string> $palette Custom property name to hex colour.
+ * @return string[] Failure descriptions, empty when the palette passes.
+ */
+function lumen_assert_variation_contrast(array $palette) {
+    $failures = array();
+
+    foreach (LUMEN_TEXT_REFERENCE as $property => $reference) {
+        $surface = $reference[1];
+        $ratio   = lumen_contrast_ratio($palette[$property], $palette[$surface]);
+
+        if ($ratio < LUMEN_MIN_CONTRAST) {
+            $failures[] = sprintf(
+                '%s on %s is %.2f:1, below %.1f:1',
+                $property,
+                $surface,
+                $ratio,
+                LUMEN_MIN_CONTRAST
+            );
+        }
+    }
+
+    return $failures;
+}
+
+/**
  * Build one style variation.
  *
  * The variation carries the palette twice, deliberately. settings.color.palette
@@ -127,8 +158,16 @@ if (PHP_SAPI === 'cli' && isset($argv) && basename($argv[0]) === 'generate-varia
         exit(1);
     }
 
-    echo json_encode(
-        lumen_build_variation($argv[1], $argv[2], $argv[3]),
-        JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
-    ), "\n";
+    $variation = lumen_build_variation($argv[1], $argv[2], $argv[3]);
+    $failures  = lumen_assert_variation_contrast(lumen_palette());
+
+    if ($failures) {
+        fwrite(STDERR, "Refusing to write a variation that fails WCAG AA:\n");
+        foreach ($failures as $failure) {
+            fwrite(STDERR, '  ' . $failure . "\n");
+        }
+        exit(1);
+    }
+
+    echo json_encode($variation, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), "\n";
 }

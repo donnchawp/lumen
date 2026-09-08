@@ -47,3 +47,20 @@ lumen_assert_true(
     strpos($variation['styles']['css'], '--text-muted:#7c7c7c') !== false,
     'variation css carries --text-muted'
 );
+
+// A generated palette nobody re-checks is worse than a runtime one that checks
+// itself, so the generator has to do the checking the request used to do.
+lumen_test_set_mods(array());
+lumen_assert_same(
+    array(),
+    lumen_assert_variation_contrast(lumen_palette()),
+    'the default palette passes its own contrast check'
+);
+
+// A palette the maths never produces, to prove the check can actually fail.
+$broken = lumen_palette();
+$broken['--text-primary'] = '#1c1c1c';
+lumen_assert_true(
+    count(lumen_assert_variation_contrast($broken)) > 0,
+    'a low-contrast tone is reported'
+);
