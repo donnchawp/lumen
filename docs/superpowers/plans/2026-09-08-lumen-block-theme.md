@@ -18,7 +18,11 @@
 - Text domain: `lumen`. Every user-facing string is translated.
 - `LUMEN_MIN_CONTRAST` is 4.5 (WCAG AA, normal text). No generated tone may sit below it on its own surface.
 - Indentation: 4 spaces, PHP; no closing `?>` in PHP-only files.
-- Every PHP file starts with `if (!defined('ABSPATH')) { exit; }` except files under `bin/`, which run from the CLI.
+- Theme files start with `if (!defined('ABSPATH')) { exit; }`. CLI files — everything
+  under `bin/` and `tests/` — start with `if (PHP_SAPI !== 'cli') { exit; }` instead.
+  The ABSPATH guard cannot work there: `tests/bootstrap.php` defines ABSPATH itself, so
+  the guard would exit before the definition. Both express the same rule — nothing in
+  the theme runs from a browser that is not part of rendering a page.
 - Comments explain *why*, not *what*. The existing codebase sets this bar; match it.
 - Commit after every task. Never commit a failing test.
 
