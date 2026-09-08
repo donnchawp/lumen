@@ -112,6 +112,21 @@ if (PHP_SAPI === 'cli' && isset($argv) && basename($argv[0]) === 'generate-varia
         exit(1);
     }
 
+    // lumen_palette() sanitises these the same way, but silently falls back to
+    // the defaults when a value fails: correct for a live site, which must
+    // never break on bad Customizer data, but wrong here. A typo an operator
+    // never sees produces a "Warm" variation built from the dark default and
+    // checks it in as if it were real.
+    if (!sanitize_hex_color($argv[2])) {
+        fwrite(STDERR, "generate-variation.php: '{$argv[2]}' is not a valid hex colour (background)\n");
+        exit(1);
+    }
+
+    if (!sanitize_hex_color($argv[3])) {
+        fwrite(STDERR, "generate-variation.php: '{$argv[3]}' is not a valid hex colour (accent)\n");
+        exit(1);
+    }
+
     echo json_encode(
         lumen_build_variation($argv[1], $argv[2], $argv[3]),
         JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
