@@ -10,7 +10,7 @@ Requires PHP: 7.4
 License: GNU General Public License v2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 Text Domain: lumen
-Tags: blog, photography, one-column, grid-layout, custom-colors, custom-menu, featured-images, full-site-editing, style-variations, wide-blocks, translation-ready, sticky-post, threaded-comments
+Tags: blog, photography, one-column, grid-layout, custom-colors, custom-menu, featured-images, full-site-editing, style-variations, wide-blocks, sticky-post, threaded-comments
 */
 
 /* ========== CSS RESET & BASE ========== */
@@ -31,7 +31,9 @@ Tags: blog, photography, one-column, grid-layout, custom-colors, custom-menu, fe
  * global stylesheet arrives at all.
  *
  * Keep the values in step with theme.json's styles.css and with styles/dark.json,
- * which bin/generate-variation.php writes from lumen_palette(). */
+ * which bin/generate-variation.php writes from lumen_palette(). tests/test-palette.php
+ * reads this block and fails if they drift, so "keep in step" is enforced rather
+ * than asked for. */
 :where(:root) {
     --bg-primary: #0a0a0a;
     --bg-secondary: #111111;

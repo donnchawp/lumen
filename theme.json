@@ -8,7 +8,64 @@
             "custom": false,
             "customDuotone": false,
             "defaultPalette": false,
-            "defaultGradients": false
+            "defaultGradients": false,
+            "palette": [
+                {
+                    "slug": "bg-primary",
+                    "name": "Background",
+                    "color": "#0a0a0a"
+                },
+                {
+                    "slug": "bg-secondary",
+                    "name": "Background, raised",
+                    "color": "#111111"
+                },
+                {
+                    "slug": "bg-tertiary",
+                    "name": "Background, panel",
+                    "color": "#1a1a1a"
+                },
+                {
+                    "slug": "border",
+                    "name": "Border",
+                    "color": "#1a1a1a"
+                },
+                {
+                    "slug": "border-hover",
+                    "name": "Border, hover",
+                    "color": "#333333"
+                },
+                {
+                    "slug": "text-primary",
+                    "name": "Text",
+                    "color": "#e5e5e5"
+                },
+                {
+                    "slug": "text-secondary",
+                    "name": "Text, secondary",
+                    "color": "#888888"
+                },
+                {
+                    "slug": "text-muted",
+                    "name": "Text, muted",
+                    "color": "#7c7c7c"
+                },
+                {
+                    "slug": "accent",
+                    "name": "Accent",
+                    "color": "#ffffff"
+                },
+                {
+                    "slug": "accent-overlay",
+                    "name": "Accent, on photo",
+                    "color": "#ffffff"
+                },
+                {
+                    "slug": "text-overlay",
+                    "name": "Text, on photo",
+                    "color": "#888888"
+                }
+            ]
         },
         "spacing": {
             "units": [

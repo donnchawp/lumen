@@ -88,3 +88,53 @@ lumen_assert_same(
     $lumen_theme_json['styles']['css'],
     'theme.json base palette matches styles/dark.json'
 );
+
+// And the same for the presets. settings.color sets defaultPalette and custom
+// both to false, so without a palette of its own theme.json leaves the editor's
+// colour UI completely empty until the reader opens Browse styles and picks a
+// variation — which is not a state anyone would choose deliberately. Copied
+// from styles/dark.json rather than typed, the way styles.css above is, so this
+// assertion is the only thing keeping the two in step.
+lumen_assert_same(
+    $lumen_dark['settings']['color']['palette'],
+    $lumen_theme_json['settings']['color']['palette'],
+    'theme.json colour presets match styles/dark.json'
+);
+
+// The third copy of the same eleven values, and until now the untested one:
+// style.css declares them at zero specificity as what paints when no global
+// stylesheet arrives. Nothing at runtime compares it with the other two, so it
+// can drift silently and only be noticed by whoever loads the site with
+// WordPress's global styles failing — which is exactly when it matters.
+//
+// Read as a block rather than by searching the whole file, so a stray
+// --bg-primary in a comment or a media query cannot satisfy it. Comments are
+// stripped first because the ones inside this block quote hex values.
+$lumen_style_css = file_get_contents(dirname(__DIR__) . '/style.css');
+
+preg_match('/:where\(:root\)\s*\{(.*?)\}/s', $lumen_style_css, $lumen_root_block);
+
+$lumen_declared = array();
+
+preg_match_all(
+    '/(--[a-z-]+)\s*:\s*(#[0-9a-f]{3,6})\s*;/i',
+    preg_replace('!/\*.*?\*/!s', '', isset($lumen_root_block[1]) ? $lumen_root_block[1] : ''),
+    $lumen_matches,
+    PREG_SET_ORDER
+);
+
+foreach ($lumen_matches as $lumen_match) {
+    $lumen_declared[$lumen_match[1]] = strtolower($lumen_match[2]);
+}
+
+lumen_test_set_mods(array());
+$lumen_generated = lumen_palette();
+
+ksort($lumen_generated);
+ksort($lumen_declared);
+
+lumen_assert_same(
+    $lumen_generated,
+    $lumen_declared,
+    'style.css :where(:root) matches the generated dark palette'
+);
