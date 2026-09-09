@@ -1,0 +1,208 @@
+{
+    "$schema": "https://schemas.wp.org/wp/6.6/theme.json",
+    "version": 3,
+    "settings": {
+        "appearanceTools": true,
+        "useRootPaddingAwareAlignments": true,
+        "color": {
+            "custom": false,
+            "customDuotone": false,
+            "defaultPalette": false,
+            "defaultGradients": false,
+            "palette": [
+                {
+                    "slug": "bg-primary",
+                    "name": "Background",
+                    "color": "#0a0a0a"
+                },
+                {
+                    "slug": "bg-secondary",
+                    "name": "Background, raised",
+                    "color": "#111111"
+                },
+                {
+                    "slug": "bg-tertiary",
+                    "name": "Background, panel",
+                    "color": "#1a1a1a"
+                },
+                {
+                    "slug": "border",
+                    "name": "Border",
+                    "color": "#1a1a1a"
+                },
+                {
+                    "slug": "border-hover",
+                    "name": "Border, hover",
+                    "color": "#333333"
+                },
+                {
+                    "slug": "text-primary",
+                    "name": "Text",
+                    "color": "#e5e5e5"
+                },
+                {
+                    "slug": "text-secondary",
+                    "name": "Text, secondary",
+                    "color": "#888888"
+                },
+                {
+                    "slug": "text-muted",
+                    "name": "Text, muted",
+                    "color": "#7c7c7c"
+                },
+                {
+                    "slug": "accent",
+                    "name": "Accent",
+                    "color": "#ffffff"
+                },
+                {
+                    "slug": "accent-overlay",
+                    "name": "Accent, on photo",
+                    "color": "#ffffff"
+                },
+                {
+                    "slug": "text-overlay",
+                    "name": "Text, on photo",
+                    "color": "#888888"
+                }
+            ]
+        },
+        "spacing": {
+            "units": [
+                "px",
+                "rem",
+                "vh",
+                "vw"
+            ]
+        },
+        "layout": {
+            "contentSize": "700px",
+            "wideSize": "1400px"
+        },
+        "typography": {
+            "customFontSize": false,
+            "fluid": false
+        }
+    },
+    "styles": {
+        "color": {
+            "background": "var(--bg-primary)",
+            "text": "var(--text-primary)"
+        },
+        "elements": {
+            "button": {
+                "border": {
+                    "color": "var(--border-hover)",
+                    "radius": "4px",
+                    "style": "solid",
+                    "width": "1px"
+                },
+                "color": {
+                    "background": "var(--bg-tertiary)",
+                    "text": "var(--text-primary)"
+                },
+                "spacing": {
+                    "padding": {
+                        "top": "0.7rem",
+                        "right": "1.2rem",
+                        "bottom": "0.7rem",
+                        "left": "1.2rem"
+                    }
+                },
+                "typography": {
+                    "fontFamily": "inherit",
+                    "fontSize": "0.9rem"
+                },
+                ":hover": {
+                    "border": {
+                        "color": "var(--accent)"
+                    },
+                    "color": {
+                        "text": "var(--accent)"
+                    }
+                }
+            },
+            "link": {
+                "color": {
+                    "text": "var(--accent)"
+                }
+            }
+        },
+        "blocks": {
+            "core/comments-title": {
+                "color": {
+                    "text": "var(--text-muted)"
+                },
+                "spacing": {
+                    "margin": {
+                        "bottom": "2rem"
+                    }
+                },
+                "typography": {
+                    "fontSize": "0.85rem",
+                    "fontWeight": "400",
+                    "letterSpacing": "0.15em",
+                    "textTransform": "uppercase"
+                }
+            },
+            "core/navigation": {
+                "color": {
+                    "text": "var(--text-secondary)"
+                },
+                "typography": {
+                    "fontSize": "0.85rem",
+                    "letterSpacing": "0.05em",
+                    "textTransform": "uppercase"
+                }
+            },
+            "core/post-title": {
+                "spacing": {
+                    "margin": {
+                        "bottom": "0.5rem"
+                    }
+                },
+                "typography": {
+                    "fontSize": "2rem",
+                    "fontWeight": "300",
+                    "letterSpacing": "0.02em"
+                }
+            },
+            "core/site-title": {
+                "color": {
+                    "text": "var(--accent)"
+                },
+                "elements": {
+                    "link": {
+                        "color": {
+                            "text": "var(--accent)"
+                        }
+                    }
+                },
+                "typography": {
+                    "fontSize": "2.5rem",
+                    "fontWeight": "200",
+                    "letterSpacing": "0.15em",
+                    "textTransform": "uppercase"
+                }
+            }
+        },
+        "css": ":root{--bg-primary:#0a0a0a;--bg-secondary:#111111;--bg-tertiary:#1a1a1a;--border:#1a1a1a;--border-hover:#333333;--text-primary:#e5e5e5;--text-secondary:#888888;--text-muted:#7c7c7c;--accent:#ffffff;--accent-overlay:#ffffff;--text-overlay:#888888;}"
+    },
+    "templateParts": [
+        {
+            "name": "header",
+            "title": "Header",
+            "area": "header"
+        },
+        {
+            "name": "header-home",
+            "title": "Header (home)",
+            "area": "header"
+        },
+        {
+            "name": "footer",
+            "title": "Footer",
+            "area": "footer"
+        }
+    ]
+}

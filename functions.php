@@ -12,19 +12,18 @@ if (!defined('ABSPATH')) {
 /**
  * Photo grid column width, in pixels.
  *
- * The Customizer setting is the grid's minimum column width, not a column
- * count. The grid fits as many columns of at least this width as the container
- * holds and then stretches them to fill it, so a larger value means fewer and
- * bigger photos, and the count still falls on its own as the viewport narrows.
+ * This is the grid's minimum column width, not a column count. The grid fits as
+ * many columns of at least this width as the container holds and then stretches
+ * them to fill it, so a larger value means fewer and bigger photos, and the
+ * count still falls on its own as the viewport narrows.
  *
- * 600 is the ceiling because two 600px columns plus the 24px gap need 1224px
- * and .site-main tops out at a 1352px content box. Anything above roughly 650
- * would leave a single column stretched across the full width at every
- * viewport, which is a different layout rather than a denser one.
+ * It used to be a Customizer setting with a 200-600 range, clamped on read.
+ * The Customizer went with the classic theme, so there is one value now and
+ * nothing to sanitise. Much above 650 the grid is a single column stretched
+ * across the full width at every viewport, which is a different layout rather
+ * than a denser one, which is why the range it used to offer stopped at 600.
  */
 const LUMEN_GRID_MIN_WIDTH_DEFAULT = 450;
-const LUMEN_GRID_MIN_WIDTH_LOWER   = 200;
-const LUMEN_GRID_MIN_WIDTH_UPPER   = 600;
 
 /**
  * The page frame, mirroring style.css.
@@ -58,74 +57,11 @@ const LUMEN_GRID_ONE_COL_BP   = 480;  // At and below this the grid is forced to
 // What .site-main leaves for the grid once it has paid its own padding.
 const LUMEN_GRID_MAX_CONTENT  = LUMEN_SITE_MAX_WIDTH - LUMEN_GRID_PAGE_PADDING;
 
-/**
- * The palette the theme was designed around.
- *
- * Every colour below is derived from the Customizer's background colour rather
- * than hardcoded, but these values are what that derivation is calibrated
- * against: at the default background it reproduces them exactly, and at any
- * other background it transposes the same relationships. Changing one here
- * changes the whole scheme, at every background, which is the point of keeping
- * them in one place.
- *
- * The surface fractions say how far each surface sits from the background
- * toward the opposite pole. 0.029 of the way from #0a0a0a to white is #111111,
- * 0.065 is #1a1a1a and 0.167 is #333333, which is the dark palette exactly.
- */
-const LUMEN_BG_DEFAULT = '#0a0a0a';
-
-const LUMEN_SURFACE_MIX = array(
-    '--bg-secondary' => 0.029,
-    '--bg-tertiary'  => 0.065,
-    '--border'       => 0.065,
-    '--border-hover' => 0.167,
-);
-
-/**
- * Each text tone, and the surface it has to survive on.
- *
- * The surface is the darkest one the tone is actually painted on in style.css,
- * not the page background: --text-primary reaches --bg-tertiary on the search
- * and comment submit buttons, and --text-muted reaches --bg-secondary on the
- * note row date and the search placeholder. Deriving a tone against the page
- * background alone is what let the shipped --text-muted sit at 4.74:1 there
- * and only 4.52:1 where it is really used, with no margin left for the
- * background moving.
- */
-const LUMEN_TEXT_REFERENCE = array(
-    '--text-primary'   => array('#e5e5e5', '--bg-tertiary'),
-    '--text-secondary' => array('#888888', '--bg-primary'),
-    '--text-muted'     => array('#7c7c7c', '--bg-secondary'),
-);
-
-/** WCAG AA for normal text. No tone is allowed below this on its own surface. */
-const LUMEN_MIN_CONTRAST = 4.5;
-
-/**
- * How opaque the photo card overlay's scrim is at its foot.
- *
- * Emitted as --overlay-alpha and used by the gradient in style.css, so this is
- * the value itself rather than a copy of it. lumen_overlay_background() then
- * derives the surface that alpha implies, which is what overlay text is
- * checked against. Softening the scrim therefore re-checks the text against
- * the lighter surface it just created, instead of leaving the two to disagree.
- */
-const LUMEN_OVERLAY_ALPHA = 0.9;
-
-/**
- * The lightest the photo card overlay's scrim can composite to.
- *
- * The overlay is a black gradient over arbitrary photo data, so the worst case
- * for anything painted on it is the lightest photo: whatever is left of white
- * once the scrim is laid over it. Overlay text is checked against that, and
- * never against the page background, because the scrim stays dark however
- * light the page gets.
- *
- * @return string Hex colour.
- */
-function lumen_overlay_background() {
-    return lumen_mix('#ffffff', '#000000', LUMEN_OVERLAY_ALPHA);
-}
+// Still required at runtime even though no colour is derived per request any
+// more: LUMEN_OVERLAY_ALPHA lives here, lumen_scripts() emits it, and the tone
+// the overlay's date is contrast-checked against is worked out from the same
+// constant. bin/generate-variation.php and tests/ load this file themselves.
+require_once get_template_directory() . '/inc/palette.php';
 
 /**
  * The two grid image sizes.
@@ -195,26 +131,125 @@ function lumen_setup() {
 
     add_theme_support('responsive-embeds');
 
-    // Block editor: wide and full alignments, previewed with a dedicated
-    // stylesheet. style.css is not used here: its universal reset and
-    // overflow-x:hidden on body would break the editing surface.
+    // Wide and full alignments. theme.json's layout.wideSize already implies
+    // this on a block theme; it is declared anyway so the support does not
+    // depend on which of the two WordPress consults.
     //
-    // Both supports are required. add_editor_style() declares 'editor-style'
-    // (singular), which is the classic TinyMCE feature; the block editor loads
-    // theme styles only when 'editor-styles' (plural) is declared. Without the
-    // plural one the stylesheet below is never loaded and this whole block is
-    // inert. dark-editor-style tells the editor its canvas is dark so it
-    // adjusts its own UI accordingly.
+    // There is no editor stylesheet any more. editor-style.css existed because
+    // style.css cannot safely be loaded onto the editing surface — its
+    // universal reset and its overflow-x:hidden on body would break it — and
+    // the palette still had to reach the canvas. theme.json carries the palette
+    // now, and the block styling with it. What no longer previews in the editor
+    // is the post-content typography .single-content applies on the front end.
+    //
+    // register_nav_menus() went at the same time. What makes that safe is
+    // WP_Navigation_Fallback::get_fallback_classic_menu(), which tries three
+    // things in order: the menu at the "primary" location, then a menu whose
+    // slug is "primary", then the most recently created menu. Only the first
+    // depends on a registered location, so an unregistered theme still finds
+    // the existing menu and offers it for import. Dropping the registration is
+    // not free: on a theme switch, wp_map_nav_menu_locations() intersects the
+    // stored locations against an empty registry and writes the empty result
+    // back, discarding the primary assignment. readme.txt's "Upgrading from
+    // Lumen 1.x" carries what that means operationally. It does not cost the
+    // import.
     add_theme_support('align-wide');
-    add_theme_support('editor-styles');
-    add_theme_support('dark-editor-style');
-    add_editor_style('editor-style.css');
-
-    register_nav_menus(array(
-        'primary' => __('Primary Menu', 'lumen'),
-    ));
 }
 add_action('after_setup_theme', 'lumen_setup');
+
+/**
+ * Register Blocks
+ */
+function lumen_register_blocks() {
+    // block.json names this handle rather than a file, because "file:./editor.js"
+    // makes core look for an editor.asset.php beside it for the dependency list
+    // and the version, and that file is a build artefact. There is no build
+    // step, so the dependencies are stated here instead. wp-block-editor and
+    // wp-components are what the notesHeading control needs; the other three are
+    // registerBlockType, createElement and __.
+    //
+    // Registered before the block type, because register_block_type() resolves
+    // editorScript against the handles that exist at that moment.
+    wp_register_script(
+        'lumen-photo-grid-editor',
+        get_template_directory_uri() . '/blocks/photo-grid/editor.js',
+        array('wp-blocks', 'wp-element', 'wp-block-editor', 'wp-components', 'wp-i18n'),
+        wp_get_theme()->get('Version'),
+        true
+    );
+
+    // The counterpart of load_theme_textdomain() for the four strings in
+    // editor.js. Without it their __() calls never consult anything, however
+    // complete a translation someone drops into /languages.
+    wp_set_script_translations('lumen-photo-grid-editor', 'lumen', get_template_directory() . '/languages');
+
+    // Registered from metadata so block.json stays the single source of truth
+    // for the attribute default the renderer reads.
+    register_block_type(get_template_directory() . '/blocks/photo-grid');
+}
+add_action('init', 'lumen_register_blocks');
+
+/**
+ * The two paragraphs in the templates that a static file cannot hold.
+ *
+ * footer.php built its copyright line from wp_date('Y') and the site name, and
+ * 404.php linked home through home_url(). A template is static markup, so
+ * writing those values into parts/footer.html and templates/404.html would
+ * leave the year wrong every January, the site name wrong the first time the
+ * site is renamed, and the "back to the gallery" link pointing at the domain
+ * root on any install in a subdirectory. It would also drop the only two
+ * translated strings the templates have.
+ *
+ * A binding keeps each paragraph in its template, where the Site Editor can
+ * still move and style it, and the string here. What is written into the
+ * template file is only what the editor and a stale render show; these are the
+ * values that ship. Core passes a bound paragraph through wp_kses_post(), so
+ * the anchor below survives.
+ */
+function lumen_register_bindings() {
+    register_block_bindings_source('lumen/copyright', array(
+        'label'              => __('Copyright line', 'lumen'),
+        'get_value_callback' => 'lumen_get_copyright_line',
+    ));
+
+    register_block_bindings_source('lumen/home-link', array(
+        'label'              => __('Link home', 'lumen'),
+        'get_value_callback' => 'lumen_get_home_link',
+    ));
+}
+add_action('init', 'lumen_register_bindings');
+
+/**
+ * The copyright line.
+ *
+ * Escaped, unlike lumen_get_home_link() below, because this one is plain text.
+ * Core passes a bound paragraph's value through wp_kses_post(), so a site name
+ * containing markup would render as markup here where footer.php showed it
+ * literally. get_bloginfo('name') returns the raw option, and wp_date() is
+ * format-string driven and cannot, but escaping both is cheaper than a comment
+ * explaining why only one of them needs it.
+ *
+ * @return string The copyright line, as plain text.
+ */
+function lumen_get_copyright_line() {
+    return sprintf(
+        /* translators: 1: Current year. 2: Site name. */
+        __('© %1$s %2$s. All rights reserved.', 'lumen'),
+        esc_html(wp_date('Y')),
+        esc_html(get_bloginfo('name'))
+    );
+}
+
+/**
+ * @return string An anchor to the site's front page.
+ */
+function lumen_get_home_link() {
+    return sprintf(
+        '<a href="%1$s">%2$s</a>',
+        esc_url(home_url('/')),
+        esc_html__('Back to the gallery', 'lumen')
+    );
+}
 
 /**
  * Enqueue Scripts and Styles
@@ -227,21 +262,22 @@ function lumen_scripts() {
         wp_get_theme()->get('Version')
     );
 
-    // Everything PHP owns that the stylesheet needs, as custom property
-    // overrides. style.css carries the same values as var() fallbacks, so the
-    // page still renders if this block never arrives, but these are the
-    // authoritative copies and the ones the sizes attribute is computed from.
+    // The four measurements PHP owns and the stylesheet needs. style.css
+    // carries the same values, so the page still renders if this block never
+    // arrives, but these are the authoritative copies and the ones the sizes
+    // attribute is computed from.
     //
-    // The whole colour palette is derived rather than only the accent, because
-    // every tone in it is relative to the background the visitor picked.
-    $properties = array_merge(
-        array(
-            '--photo-grid-min' => lumen_get_grid_min_width() . 'px',
-            '--site-max-width' => LUMEN_SITE_MAX_WIDTH . 'px',
-            '--reading-width'  => LUMEN_CONTENT_WIDTH . 'px',
-            '--overlay-alpha'  => LUMEN_OVERLAY_ALPHA,
-        ),
-        lumen_palette()
+    // No colours. lumen_palette() used to be merged in here, which put the dark
+    // palette on every response, after the global stylesheet and at the same
+    // specificity — so selecting the Light variation in the Site Editor changed
+    // nothing. Colour comes from theme.json and from whichever variation under
+    // styles/ is selected; lumen_palette() is what generates those, offline,
+    // through bin/generate-variation.php.
+    $properties = array(
+        '--photo-grid-min' => lumen_get_grid_min_width() . 'px',
+        '--site-max-width' => LUMEN_SITE_MAX_WIDTH . 'px',
+        '--reading-width'  => LUMEN_CONTENT_WIDTH . 'px',
+        '--overlay-alpha'  => LUMEN_OVERLAY_ALPHA,
     );
 
     $declarations = '';
@@ -260,166 +296,30 @@ function lumen_scripts() {
 add_action('wp_enqueue_scripts', 'lumen_scripts');
 
 /**
- * Customizer: Add theme options
- */
-function lumen_customize_register($wp_customize) {
-    $wp_customize->add_setting('lumen_accent_color', array(
-        'default'           => '#ffffff',
-        'sanitize_callback' => 'sanitize_hex_color',
-        'transport'         => 'refresh',
-    ));
-
-    $wp_customize->add_control(new WP_Customize_Color_Control($wp_customize, 'lumen_accent_color', array(
-        'label'       => __('Accent Color', 'lumen'),
-        'description' => __('Used for the site title, link hovers and focus outlines. Dark colours are lightened automatically so they stay readable on the dark background.', 'lumen'),
-        'section'     => 'colors',
-    )));
-
-    $wp_customize->add_setting('lumen_background_color', array(
-        'default'           => LUMEN_BG_DEFAULT,
-        'sanitize_callback' => 'sanitize_hex_color',
-        'transport'         => 'refresh',
-    ));
-
-    $wp_customize->add_control(new WP_Customize_Color_Control($wp_customize, 'lumen_background_color', array(
-        'label'       => __('Background Color', 'lumen'),
-        'description' => __('The page background. Every other colour in the theme is worked out from it, so a light background gives dark text, borders and panels to match, all held to WCAG AA. The overlay on a photo stays dark either way, because it sits on the photo rather than on the page.', 'lumen'),
-        'section'     => 'colors',
-        'priority'    => 5,
-    )));
-
-    $wp_customize->add_section('lumen_photo_grid', array(
-        'title'    => __('Photo Grid', 'lumen'),
-        'priority' => 40,
-    ));
-
-    $wp_customize->add_setting('lumen_grid_min_width', array(
-        'default'           => LUMEN_GRID_MIN_WIDTH_DEFAULT,
-        'sanitize_callback' => 'lumen_sanitize_grid_min_width',
-        'transport'         => 'refresh',
-    ));
-
-    $wp_customize->add_control('lumen_grid_min_width', array(
-        'label'       => __('Column width', 'lumen'),
-        'description' => __('The narrowest a photo column may be, in pixels. The grid fits as many columns as will fit and stretches them to fill the row, so a larger number means fewer, bigger photos. 300 gives four across on a wide screen, 350 gives three and 450 gives two.', 'lumen'),
-        'section'     => 'lumen_photo_grid',
-        'type'        => 'number',
-        'input_attrs' => array(
-            'min'  => LUMEN_GRID_MIN_WIDTH_LOWER,
-            'max'  => LUMEN_GRID_MIN_WIDTH_UPPER,
-            'step' => 10,
-        ),
-    ));
-}
-
-/**
- * Clamp a photo grid column width to the range the layout and crops support.
+ * The photo grid column width, in pixels.
  *
- * Used as the setting's sanitize_callback, and again on read, because a value
- * stored before the bounds moved would otherwise escape them.
+ * Kept as a function rather than folded into its two callers, because the sizes
+ * attribute and --photo-grid-min have to agree on it and a single reader is how
+ * that stays true.
  *
- * @param mixed $value Raw setting value.
- * @return int Column width in pixels.
- */
-function lumen_sanitize_grid_min_width($value) {
-    return min(LUMEN_GRID_MIN_WIDTH_UPPER, max(LUMEN_GRID_MIN_WIDTH_LOWER, (int) $value));
-}
-
-/**
- * The configured photo grid column width, in pixels.
+ * The three theme mods this and lumen_palette() used to read are deliberately
+ * left in the database. Nothing on the request path reads theme_mods_lumen any
+ * more — lumen_palette() still would, but only bin/generate-variation.php calls
+ * it, against its own stubs — so lumen_background_color, lumen_accent_color and
+ * lumen_grid_min_width all survive a switch back to classic Lumen intact.
+ *
+ * nav_menu_locations, in that same option, does not, and the cause is dropping
+ * register_nav_menus(): switch_theme() stashes the locations, then
+ * wp_map_nav_menu_locations() intersects them against get_registered_nav_menus(),
+ * which is now empty, and _wp_menus_changed() writes the empty result back. So
+ * leaving this theme and returning to it loses the menu assignment that both
+ * classic Lumen and core/navigation's classic-menu import read. Do the import in
+ * the Site Editor before switching themes for any reason.
  *
  * @return int
  */
 function lumen_get_grid_min_width() {
-    return lumen_sanitize_grid_min_width(
-        get_theme_mod('lumen_grid_min_width', LUMEN_GRID_MIN_WIDTH_DEFAULT)
-    );
-}
-add_action('customize_register', 'lumen_customize_register');
-
-/**
- * The configured background colour.
- *
- * @return string Hex colour.
- */
-function lumen_get_background_color() {
-    $background = sanitize_hex_color(get_theme_mod('lumen_background_color', LUMEN_BG_DEFAULT));
-
-    return $background ? $background : LUMEN_BG_DEFAULT;
-}
-
-/**
- * Every colour custom property, derived from the background colour.
- *
- * The theme is one scheme rather than a light one and a dark one. The surfaces
- * are fixed fractions of the way from the background toward the opposite pole,
- * and the text tones are whatever hits the contrast ratios the original palette
- * had. Both are calibrated so the default background reproduces the hand-tuned
- * values in style.css exactly; a lighter background transposes the same scheme
- * rather than switching to a second one.
- *
- * The overlay is the exception. It is a dark scrim sitting on a photo, not on
- * the page, so its text keeps its own tones and stays light however light the
- * page gets. Without that, a light background would paint dark text on black.
- *
- * @return array<string, string> Custom property name to hex colour.
- */
-function lumen_palette() {
-    static $cache = array();
-
-    $background = lumen_get_background_color();
-    $accent     = sanitize_hex_color(get_theme_mod('lumen_accent_color', '#ffffff'));
-    $accent     = $accent ? $accent : '#ffffff';
-    $key        = $background . $accent;
-
-    if (isset($cache[$key])) {
-        return $cache[$key];
-    }
-
-    $background = lumen_usable_background($background);
-    $palette    = lumen_surfaces($background);
-
-    // The ratio each tone has in the designed palette, measured where it is
-    // actually painted, is the thing carried over to the new background. Never
-    // below AA, which only bites if a reference tone was itself borderline.
-    $reference_surfaces = lumen_surfaces(LUMEN_BG_DEFAULT);
-
-    foreach (LUMEN_TEXT_REFERENCE as $property => $reference) {
-        list($reference_hex, $surface) = $reference;
-
-        $palette[$property] = lumen_muted_toward(
-            $background,
-            $palette[$surface],
-            max(
-                LUMEN_MIN_CONTRAST,
-                lumen_contrast_ratio($reference_hex, $reference_surfaces[$surface])
-            )
-        );
-    }
-
-    // Checked against --bg-secondary, not the page. The accent is painted on
-    // both: --bg-primary for the site title, links and focus outlines, and
-    // --bg-secondary behind the current pagination item, the focused skip link
-    // and note rows on hover. --bg-secondary is always the one shifted a step
-    // toward the text, so it is always the worse of the two for anything
-    // painted in the text's direction, whichever way round the scheme is.
-    // Checking --bg-primary instead used to let a colour land at 4.5:1 there
-    // and 4.29:1 where it really sat.
-    $palette['--accent'] = lumen_ensure_contrast($accent, $palette['--bg-secondary']);
-
-    // The scrim is dark whatever the page is doing, so the overlay's accent is
-    // checked against the scrim and ends up lightened where the page's is
-    // darkened. Same colour picked, pushed the other way.
-    $palette['--accent-overlay'] = lumen_ensure_contrast($accent, lumen_overlay_background());
-
-    // The date under the overlay title. Fixed rather than derived:
-    // LUMEN_OVERLAY_ALPHA was chosen to put exactly this tone at 4.9:1 over the
-    // lightest photo the scrim can composite against.
-    $palette['--text-overlay'] = LUMEN_TEXT_REFERENCE['--text-secondary'][0];
-
-    $cache[$key] = $palette;
-
-    return $palette;
+    return LUMEN_GRID_MIN_WIDTH_DEFAULT;
 }
 
 /**
@@ -482,266 +382,43 @@ function lumen_get_display_title($post = null) {
 }
 
 /**
- * Relative luminance of a hex colour, per WCAG 2.1.
+ * Supply a title for untitled posts.
  *
- * @param string $hex Three or six digit hex colour, with leading #.
- * @return float Luminance between 0 and 1.
+ * lumen_get_display_title() used to be called from the templates directly.
+ * core/post-title offers no fallback hook, so the value is filtered instead.
+ * This reaches slightly further than the old function did, because a filter
+ * cannot see which template asked: an untitled post now reads "Untitled"
+ * wherever core prints a title, including the admin lists and the feeds.
+ *
+ * Emptiness is tested against the raw post_title rather than $title for the
+ * same reason lumen_get_display_title() does. core applies this filter after
+ * it has prefixed protected and private posts, so an untitled protected post
+ * arrives here as "Protected: ", which is not empty. Testing $title would
+ * therefore never fire the fallback for exactly the posts whose prefixing
+ * lumen_get_display_title() goes to the trouble of reproducing.
+ *
+ * No recursion: lumen_get_display_title() only calls get_the_title(), and so
+ * only re-enters this filter, on its non-empty branch, which is the branch
+ * this function has already returned on.
+ *
+ * @param string $title The post title, already prefixed by core.
+ * @param int    $id    The post ID. 0 when a caller applies the filter without one.
+ * @return string
  */
-function lumen_relative_luminance($hex) {
-    $channels  = lumen_hex_to_rgb($hex);
-    $weights   = array(0.2126, 0.7152, 0.0722);
-    $luminance = 0.0;
-
-    foreach ($channels as $index => $value) {
-        $channel = $value / 255;
-        $channel = ($channel <= 0.03928)
-            ? $channel / 12.92
-            : pow(($channel + 0.055) / 1.055, 2.4);
-
-        $luminance += $channel * $weights[$index];
+function lumen_filter_empty_title($title, $id = 0) {
+    // Without an id there is no raw title to consult and no post to build a
+    // fallback from, so the title is passed through untouched.
+    if (!$id) {
+        return $title;
     }
 
-    return $luminance;
-}
-
-/**
- * WCAG contrast ratio between two hex colours.
- *
- * @param string $one Hex colour.
- * @param string $two Hex colour.
- * @return float Ratio between 1 and 21.
- */
-function lumen_contrast_ratio($one, $two) {
-    $a = lumen_relative_luminance($one);
-    $b = lumen_relative_luminance($two);
-
-    $lighter = max($a, $b);
-    $darker  = min($a, $b);
-
-    return ($lighter + 0.05) / ($darker + 0.05);
-}
-
-/**
- * Whether a colour reads as light, meaning dark text belongs on it.
- *
- * Decided by which pole it contrasts with better rather than by a luminance
- * threshold, so there is no cutoff to argue about: the answer is always the one
- * that leaves more contrast to work with.
- *
- * @param string $hex Hex colour.
- * @return bool
- */
-function lumen_is_light($hex) {
-    return lumen_contrast_ratio($hex, '#000000') > lumen_contrast_ratio($hex, '#ffffff');
-}
-
-/**
- * The pole a colour sitting on $background should be pushed toward.
- *
- * @param string $background Hex colour.
- * @return string '#000000' on a light background, '#ffffff' on a dark one.
- */
-function lumen_contrast_pole($background) {
-    return lumen_is_light($background) ? '#000000' : '#ffffff';
-}
-
-/**
- * Mix two colours.
- *
- * @param string $from   Hex colour at $amount 0.
- * @param string $to     Hex colour at $amount 1.
- * @param float  $amount Position between them, 0 to 1.
- * @return string Hex colour.
- */
-function lumen_mix($from, $to, $amount) {
-    $a = lumen_hex_to_rgb($from);
-    $b = lumen_hex_to_rgb($to);
-
-    return sprintf(
-        '#%02x%02x%02x',
-        (int) round($a[0] + ($b[0] - $a[0]) * $amount),
-        (int) round($a[1] + ($b[1] - $a[1]) * $amount),
-        (int) round($a[2] + ($b[2] - $a[2]) * $amount)
-    );
-}
-
-/**
- * Split a hex colour into its channels.
- *
- * @param string $hex Three or six digit hex colour, with or without a leading #.
- * @return array{0: int, 1: int, 2: int} Red, green and blue, 0 to 255.
- */
-function lumen_hex_to_rgb($hex) {
-    $hex = ltrim((string) $hex, '#');
-
-    if (3 === strlen($hex)) {
-        $hex = $hex[0] . $hex[0] . $hex[1] . $hex[1] . $hex[2] . $hex[2];
+    if ('' !== trim(wp_strip_all_tags(get_post_field('post_title', $id)))) {
+        return $title;
     }
 
-    return array(
-        (int) hexdec(substr($hex, 0, 2)),
-        (int) hexdec(substr($hex, 2, 2)),
-        (int) hexdec(substr($hex, 4, 2)),
-    );
+    return lumen_get_display_title($id);
 }
-
-/**
- * Push a colour toward whichever pole its background calls for, until it is legible.
- *
- * The accent colour drives the site title, link hovers, focus outlines and the
- * skip link. A colour picker cannot stop someone choosing one that vanishes
- * into the background, so the value is nudged until it is readable. Which way
- * it gets nudged follows the background: toward white on a dark one, toward
- * black on a light one.
- *
- * The hue survives as long as it can, because each step only moves part of the
- * way to the pole and the first step that clears the ratio wins.
- *
- * @param string $hex        Hex colour to adjust.
- * @param string $background Hex colour it will sit on.
- * @param float  $minimum    Target contrast ratio. Default LUMEN_MIN_CONTRAST.
- * @return string Hex colour meeting the ratio, or the pole if the background
- *                is mid-toned enough that nothing else does.
- */
-function lumen_ensure_contrast($hex, $background, $minimum = LUMEN_MIN_CONTRAST) {
-    if (lumen_contrast_ratio($hex, $background) >= $minimum) {
-        return $hex;
-    }
-
-    $pole = lumen_contrast_pole($background);
-
-    // Twentieths, keeping the hue as long as possible.
-    for ($step = 1; $step <= 20; $step++) {
-        $candidate = lumen_mix($hex, $pole, $step / 20);
-
-        if (lumen_contrast_ratio($candidate, $background) >= $minimum) {
-            return $candidate;
-        }
-    }
-
-    // Only reached on a background mid-toned enough that even the pole falls
-    // short, which bottoms out around 4.58:1 at the crossover between the two.
-    // The pole is the most readable answer available.
-    return $pole;
-}
-
-/**
- * The most muted colour that still clears a contrast ratio on a given surface.
- *
- * Walks from the pole back toward the page background and keeps the last value
- * that passes, so a tone asked for a low ratio comes out subdued and one asked
- * for a high ratio comes out bright. The ratio, rather than the colour, is what
- * the palette pins down, which is what lets the same three tones be rebuilt
- * against any background.
- *
- * $background and $surface differ because a tone is mixed toward the page but
- * measured where it is painted. Mixing toward the page tints the result with
- * the page's own hue, so a blue-grey site gets blue-grey text rather than
- * neutral grey laid on top of it; measuring against the surface is what keeps
- * it legible on the panel it actually lands on.
- *
- * @param string $background Page background, the direction to mix toward.
- * @param string $surface    Surface the tone is painted on, what it is measured against.
- * @param float  $ratio      Target contrast ratio.
- * @return string Hex colour, or the pole if the target is out of reach.
- */
-function lumen_muted_toward($background, $surface, $ratio) {
-    $pole = lumen_contrast_pole($background);
-
-    if (lumen_contrast_ratio($pole, $surface) < $ratio) {
-        return $pole;
-    }
-
-    $best = $pole;
-
-    // 255 steps, so a grey background lands on exact channel values and the
-    // default palette comes back out unchanged rather than one step off.
-    for ($step = 1; $step <= 255; $step++) {
-        $candidate = lumen_mix($pole, $background, $step / 255);
-
-        if (lumen_contrast_ratio($candidate, $surface) < $ratio) {
-            break;
-        }
-
-        $best = $candidate;
-    }
-
-    return $best;
-}
-
-/**
- * The surfaces a background implies.
- *
- * @param string $background Hex colour.
- * @return array<string, string> Custom property name to hex colour, including
- *                               --bg-primary itself.
- */
-function lumen_surfaces($background) {
-    $pole     = lumen_contrast_pole($background);
-    $surfaces = array('--bg-primary' => $background);
-
-    foreach (LUMEN_SURFACE_MIX as $property => $amount) {
-        $surfaces[$property] = lumen_mix($background, $pole, $amount);
-    }
-
-    return $surfaces;
-}
-
-/**
- * Whether a background leaves room for a legible palette.
- *
- * Fails only for mid-tones. Contrast against the better pole bottoms out around
- * 4.58:1 where black and white are equally far away, and the surfaces are a
- * step further toward the text again, so there is a band either side of that
- * crossover where nothing painted on a panel can reach AA.
- *
- * @param string $background Hex colour.
- * @return bool
- */
-function lumen_background_supports_palette($background) {
-    $surfaces = lumen_surfaces($background);
-    $pole     = lumen_contrast_pole($background);
-
-    foreach (LUMEN_TEXT_REFERENCE as $reference) {
-        if (lumen_contrast_ratio($pole, $surfaces[$reference[1]]) < LUMEN_MIN_CONTRAST) {
-            return false;
-        }
-    }
-
-    return true;
-}
-
-/**
- * Move a background out of the mid-tone band, if it is in it.
- *
- * A picked colour that cannot carry legible text is pushed away from the text,
- * deeper into whichever scheme it already leans toward, until it can. The theme
- * already does this to a dark accent colour rather than rendering it
- * unreadable; this is the same bargain applied to the background.
- *
- * The push never crosses the crossover, because it moves away from the text
- * pole rather than toward it, so a background that reads as light stays light.
- *
- * @param string $background Hex colour.
- * @return string Hex colour that supports a legible palette.
- */
-function lumen_usable_background($background) {
-    if (lumen_background_supports_palette($background)) {
-        return $background;
-    }
-
-    $away = lumen_is_light($background) ? '#ffffff' : '#000000';
-
-    for ($step = 1; $step <= 255; $step++) {
-        $candidate = lumen_mix($background, $away, $step / 255);
-
-        if (lumen_background_supports_palette($candidate)) {
-            return $candidate;
-        }
-    }
-
-    return $away;
-}
+add_filter('the_title', 'lumen_filter_empty_title', 10, 2);
 
 /**
  * Whether a post's photo should be shown.
@@ -762,6 +439,163 @@ function lumen_usable_background($background) {
 function lumen_is_photo_post($post = null) {
     return has_post_thumbnail($post) && !post_password_required($post);
 }
+
+/**
+ * Never render a protected post's featured image.
+ *
+ * On a photoblog the featured image is the content being protected, so it must
+ * not sit above the password form. lumen_is_photo_post() enforced this in
+ * single.php and page.php; core/post-featured-image renders whenever a
+ * thumbnail exists and takes no such predicate, so the rule moves to the value
+ * every caller derives from. Returning an empty string is enough to suppress
+ * the whole figure, because the block bails on empty markup.
+ *
+ * The post id core passes is used rather than the ambient global $post, so
+ * that a card rendered outside the loop is judged on its own post, the way
+ * lumen_is_photo_post() is.
+ *
+ * @param string $html    The featured image markup.
+ * @param int    $post_id The post the image belongs to.
+ * @return string
+ */
+function lumen_hide_protected_thumbnail($html, $post_id) {
+    return post_password_required($post_id) ? '' : $html;
+}
+add_filter('post_thumbnail_html', 'lumen_hide_protected_thumbnail', 10, 2);
+
+/**
+ * Keep the comment reply title at h2.
+ *
+ * comments.php passed these two strings to comment_form() itself.
+ * core/post-comments-form exposes no heading level, so without this the title
+ * reverts to core's h3, and that h3 skips a level: core/comments-title renders
+ * nothing until a post has its first comment, so on an uncommented post the
+ * reply title would follow the h1 post title with no h2 between them.
+ *
+ * @param array $defaults The comment form defaults.
+ * @return array
+ */
+function lumen_comment_form_heading($defaults) {
+    $defaults['title_reply_before'] = '<h2 id="reply-title" class="comment-reply-title">';
+    $defaults['title_reply_after']  = '</h2>';
+
+    return $defaults;
+}
+add_filter('comment_form_defaults', 'lumen_comment_form_heading');
+
+/**
+ * Name the post navigation landmark.
+ *
+ * single.php gave it aria-label="Post navigation" (single.php:52). A group
+ * block can be told to render as a nav and cannot be given an aria-label, so a
+ * single post ends up with two nav landmarks — the site menu and this — and
+ * only one of them says which is which. A screen reader then offers "navigation"
+ * twice with nothing to choose between them.
+ *
+ * The alternative was dropping tagName so the group renders a div, since an
+ * anonymous landmark is worse than none. That loses a real landmark: previous
+ * and next post links are exactly what the role is for. This restores the
+ * classic markup instead.
+ *
+ * The coupling is the className, which is what templates/single.html sets and
+ * what style.css already styles, so a Site Editor user who removes it has
+ * removed the thing being labelled as well. Only the block's own outermost tag
+ * is touched, and only when it really is a nav, so a group that has since been
+ * changed back to a div is left alone rather than given an attribute that means
+ * nothing on it.
+ *
+ * @param string $block_content The rendered block markup.
+ * @param array  $block         The parsed block, including its attributes.
+ * @return string
+ */
+function lumen_label_post_navigation($block_content, $block) {
+    if ('core/group' !== $block['blockName'] || empty($block['attrs']['className'])) {
+        return $block_content;
+    }
+
+    if (!in_array('post-navigation', preg_split('/\s+/', $block['attrs']['className']), true)) {
+        return $block_content;
+    }
+
+    $tags = new WP_HTML_Tag_Processor($block_content);
+
+    if (!$tags->next_tag() || 'NAV' !== $tags->get_tag()) {
+        return $block_content;
+    }
+
+    $tags->set_attribute('aria-label', __('Post navigation', 'lumen'));
+
+    return $tags->get_updated_html();
+}
+add_filter('render_block', 'lumen_label_post_navigation', 10, 2);
+
+/**
+ * The first media library image in a post's content, for posts that have no
+ * featured image of their own.
+ *
+ * Someone who inserts photos into a post without also setting a featured image
+ * gets an empty grid and every post in the notes list, because the whole theme
+ * keys on has_post_thumbnail(). Rather than teach the grid, the single template
+ * and the size chooser each to look somewhere else, this hooks the one value
+ * they all derive from: core builds has_post_thumbnail() out of
+ * get_post_thumbnail_id(), so filtering the id reaches every one of them, and
+ * update_post_thumbnail_cache() primes whatever it returns for free.
+ *
+ * The featured image always wins. This only runs for a post showing nothing in
+ * the grid today, so nothing that renders now changes.
+ *
+ * @param int              $thumbnail_id The post thumbnail id, 0 when there is none.
+ * @param int|WP_Post|null $post         Post id or object, already resolved by core.
+ * @return int Attachment id, or 0 to leave the post without a photo.
+ */
+function lumen_fallback_thumbnail_id($thumbnail_id, $post) {
+    if ($thumbnail_id) {
+        return $thumbnail_id;
+    }
+
+    $post = get_post($post);
+
+    if (!$post) {
+        return $thumbnail_id;
+    }
+
+    // The same post is asked for its thumbnail several times per card - once to
+    // partition it, once to choose a size, once to render - and every one of
+    // those would otherwise rescan the content.
+    static $cache = array();
+
+    if (isset($cache[$post->ID])) {
+        return $cache[$post->ID];
+    }
+
+    // Deliberately the stored content rather than the_content(). Running every
+    // content filter for each post in a loop just to find an id is far too much
+    // work for what it buys, and on this site an mu-plugin strips the first
+    // image out of the filtered output, so the raw column is also the more
+    // truthful place to look.
+    //
+    // The pattern is core's own, from wp_filter_content_tags() in media.php.
+    // Both editors write the class whenever an image comes from the library:
+    // the block editor as wp-image-${id}, the classic editor in
+    // get_image_send_to_editor(). An externally hosted image carries no id and
+    // is passed over, which is what we want - there is nothing to build a
+    // srcset from.
+    if (!preg_match('/wp-image-([0-9]+)/i', $post->post_content, $matches)) {
+        $cache[$post->ID] = 0;
+
+        return 0;
+    }
+
+    $attachment_id = (int) $matches[1];
+
+    // The class outlives the attachment: delete an image from the library and
+    // the markup keeps its id. Rendering that would put a broken card in the
+    // grid, which is a worse outcome than the note the post is today.
+    $cache[$post->ID] = wp_attachment_is_image($attachment_id) ? $attachment_id : 0;
+
+    return $cache[$post->ID];
+}
+add_filter('post_thumbnail_id', 'lumen_fallback_thumbnail_id', 10, 2);
 
 /**
  * Which registered image size a post's featured image should use in the grid.

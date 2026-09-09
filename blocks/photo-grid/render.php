@@ -1,10 +1,10 @@
 <?php
 /**
- * The gallery loop: photo grid, notes list, pagination.
+ * The gallery loop: photo grid and notes list.
  *
- * Shared by index.php, archive.php and search.php. The caller is responsible
- * for the surrounding have_posts() check and for the empty-results message,
- * because that wording differs per context.
+ * Rendered by the lumen/photo-grid block inside an inheriting Query block. The
+ * caller is responsible for the surrounding have_posts() check and for the
+ * empty-results message, because that wording differs per context.
  *
  * Posts are partitioned after the main query has run, so pagination, post
  * counts and $wp_query->max_num_pages are all left untouched.
@@ -14,6 +14,18 @@
 
 if (!defined('ABSPATH')) {
     exit;
+}
+
+/*
+ * Refuse to render inside a Query block running its own custom (non-inheriting)
+ * query: that query is not the one this grid partitions. A grid built from the
+ * wrong query would look plausible, which is why rendering nothing is the
+ * better failure. Outside any Query block context['query'] is simply absent,
+ * so this falls through and renders from the ambient main query, as every
+ * template in this theme does.
+ */
+if (!empty($block->context['query']) && empty($block->context['query']['inherit'])) {
+    return;
 }
 
 // The foreach loops below reassign $post so that the_permalink(), the_ID() and
@@ -60,8 +72,8 @@ update_post_thumbnail_cache();
     // loop. Read from core rather than hardcoded, so a site filtering the
     // threshold still gets what it asked for.
     //
-    // In core since 5.9, so it sits inside the theme's declared 6.0 floor and
-    // needs no function_exists() guard. Not to be confused with
+    // In core since 5.9, so it sits well inside the theme's declared 6.6 floor
+    // and needs no function_exists() guard. Not to be confused with
     // wp_get_loading_optimization_attributes() named in the note above, which is
     // 6.3 and is only described here, never called.
     $lumen_eager_count = wp_omit_loading_attr_threshold();
@@ -118,7 +130,7 @@ update_post_thumbnail_cache();
 
 <?php if (!empty($lumen_text_posts)) : ?>
     <section class="text-posts-section">
-        <h2 class="text-posts-heading"><?php esc_html_e('Notes & Writings', 'lumen'); ?></h2>
+        <h2 class="text-posts-heading"><?php echo esc_html($attributes['notesHeading']); ?></h2>
         <div class="text-posts-list">
             <?php foreach ($lumen_text_posts as $post) : setup_postdata($post); ?>
                 <a href="<?php the_permalink(); ?>" class="text-post-item">
@@ -132,10 +144,3 @@ update_post_thumbnail_cache();
         </div>
     </section>
 <?php endif; ?>
-
-<?php
-the_posts_pagination(array(
-    'mid_size'  => 2,
-    'prev_text' => esc_html__('← Previous', 'lumen'),
-    'next_text' => esc_html__('Next →', 'lumen'),
-));

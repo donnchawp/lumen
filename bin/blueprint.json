@@ -1,0 +1,27 @@
+{
+    "$schema": "https://playground.wordpress.net/blueprint-schema.json",
+    "preferredVersions": {
+        "php": "8.0",
+        "wp": "6.6"
+    },
+    "landingPage": "/",
+    "steps": [
+        {
+            "step": "setSiteOptions",
+            "options": {
+                "blogname": "Lumen",
+                "blogdescription": "Photographs from the west of Ireland",
+                "posts_per_page": 3,
+                "permalink_structure": "/%postname%/"
+            }
+        },
+        {
+            "step": "activateTheme",
+            "themeFolderName": "lumen"
+        },
+        {
+            "step": "runPHP",
+            "code": "<?php require_once '/wordpress/wp-load.php'; define('LUMEN_PLAYGROUND_RESET', true); require_once '/wordpress/wp-content/themes/lumen/bin/playground-content.php';"
+        }
+    ]
+}

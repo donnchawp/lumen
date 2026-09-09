@@ -1,0 +1,70 @@
+{
+    "$schema": "https://schemas.wp.org/wp/6.6/theme.json",
+    "version": 3,
+    "title": "Light",
+    "slug": "light",
+    "settings": {
+        "color": {
+            "palette": [
+                {
+                    "slug": "bg-primary",
+                    "name": "Background",
+                    "color": "#ffffff"
+                },
+                {
+                    "slug": "bg-secondary",
+                    "name": "Background, raised",
+                    "color": "#f8f8f8"
+                },
+                {
+                    "slug": "bg-tertiary",
+                    "name": "Background, panel",
+                    "color": "#eeeeee"
+                },
+                {
+                    "slug": "border",
+                    "name": "Border",
+                    "color": "#eeeeee"
+                },
+                {
+                    "slug": "border-hover",
+                    "name": "Border, hover",
+                    "color": "#d4d4d4"
+                },
+                {
+                    "slug": "text-primary",
+                    "name": "Text",
+                    "color": "#212121"
+                },
+                {
+                    "slug": "text-secondary",
+                    "name": "Text, secondary",
+                    "color": "#676767"
+                },
+                {
+                    "slug": "text-muted",
+                    "name": "Text, muted",
+                    "color": "#727272"
+                },
+                {
+                    "slug": "accent",
+                    "name": "Accent",
+                    "color": "#666666"
+                },
+                {
+                    "slug": "accent-overlay",
+                    "name": "Accent, on photo",
+                    "color": "#ffffff"
+                },
+                {
+                    "slug": "text-overlay",
+                    "name": "Text, on photo",
+                    "color": "#888888"
+                }
+            ]
+        }
+    },
+    "styles": {
+        "css": ":root{--bg-primary:#ffffff;--bg-secondary:#f8f8f8;--bg-tertiary:#eeeeee;--border:#eeeeee;--border-hover:#d4d4d4;--text-primary:#212121;--text-secondary:#676767;--text-muted:#727272;--accent:#666666;--accent-overlay:#ffffff;--text-overlay:#888888;}"
+    }
+}

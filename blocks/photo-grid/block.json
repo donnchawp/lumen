@@ -1,0 +1,24 @@
+{
+    "$schema": "https://schemas.wp.org/trunk/block.json",
+    "apiVersion": 3,
+    "name": "lumen/photo-grid",
+    "title": "Photo Grid",
+    "category": "theme",
+    "icon": "grid-view",
+    "description": "The photo grid and notes list, partitioned from one query.",
+    "textdomain": "lumen",
+    "usesContext": ["queryId", "query"],
+    "attributes": {
+        "notesHeading": {
+            "type": "string",
+            "default": "Notes & Writings"
+        }
+    },
+    "supports": {
+        "html": false,
+        "align": false,
+        "className": false
+    },
+    "editorScript": "lumen-photo-grid-editor",
+    "render": "file:./render.php"
+}
