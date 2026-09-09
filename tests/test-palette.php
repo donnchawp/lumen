@@ -74,3 +74,17 @@ foreach (array('dark' => '#0a0a0a', 'light' => '#ffffff') as $name => $backgroun
 
     lumen_assert_same($fresh, $onDisk, $name . '.json matches the generator');
 }
+
+// theme.json's base styles must carry the same custom properties as the dark
+// variation. Without them the editor canvas has no palette at all once
+// editor-style.css is deleted, and theme.json's own var(--accent) link colour
+// resolves to nothing. Compared as strings because both come from the same
+// generator output — any divergence means one was hand-edited.
+$lumen_theme_json = json_decode(file_get_contents(dirname(__DIR__) . '/theme.json'), true);
+$lumen_dark       = json_decode(file_get_contents(dirname(__DIR__) . '/styles/dark.json'), true);
+
+lumen_assert_same(
+    $lumen_dark['styles']['css'],
+    $lumen_theme_json['styles']['css'],
+    'theme.json base palette matches styles/dark.json'
+);
