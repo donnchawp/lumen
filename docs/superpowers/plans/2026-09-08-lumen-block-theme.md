@@ -724,6 +724,85 @@ colour would undo the contrast guarantee the generator enforces."
 
 ---
 
+### Task 5b: Give theme.json a base palette the editor can see
+
+Added during execution (controller ruling R7). Task 5's review found that
+`theme.json:32` sets link colour to `var(--accent)`, but `--accent` is declared
+only in `style.css`'s front-end `:root` and in `lumen_scripts()`'s inline style,
+which runs on a front-end-only hook. `editor-style.css` declares seven of the
+eleven palette properties and omits that one. Worse, Task 8 deletes
+`editor-style.css` outright, after which nothing supplies the palette to the
+editing canvas at all — a near-black gallery theme would open white.
+
+theme.json's own `styles.css` is injected into both the editor canvas and the
+front end, so putting the palette there fixes both contexts at once.
+
+**Files:**
+- Modify: `theme.json` — add `styles.css`
+- Modify: `tests/test-palette.php` — append the drift assertion
+
+**Interfaces:**
+- Consumes: `styles/dark.json` from Task 4.
+- Produces: nothing later tasks call.
+
+- [ ] **Step 1: Write the failing test**
+
+Append to `tests/test-palette.php`:
+
+```php
+// theme.json's base styles must carry the same custom properties as the dark
+// variation. Without them the editor canvas has no palette at all once
+// editor-style.css is deleted, and theme.json's own var(--accent) link colour
+// resolves to nothing. Compared as strings because both come from the same
+// generator output — any divergence means one was hand-edited.
+$lumen_theme_json = json_decode(file_get_contents(dirname(__DIR__) . '/theme.json'), true);
+$lumen_dark       = json_decode(file_get_contents(dirname(__DIR__) . '/styles/dark.json'), true);
+
+lumen_assert_same(
+    $lumen_dark['styles']['css'],
+    $lumen_theme_json['styles']['css'],
+    'theme.json base palette matches styles/dark.json'
+);
+```
+
+- [ ] **Step 2: Run it and watch it fail**
+
+Run: `php tests/run.php`
+Expected: FAIL — `theme.json` has no `styles.css` key, so the comparison sees null.
+
+- [ ] **Step 3: Copy the palette across programmatically**
+
+Do not retype the eleven values. Read the string out of `styles/dark.json` and
+write it into `theme.json`'s `styles.css`, preserving the file's existing
+`styles.color` and `styles.elements` keys:
+
+```bash
+php -r '
+$theme = json_decode(file_get_contents("theme.json"), true);
+$dark  = json_decode(file_get_contents("styles/dark.json"), true);
+$theme["styles"]["css"] = $dark["styles"]["css"];
+file_put_contents("theme.json", json_encode($theme, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n");
+'
+```
+
+- [ ] **Step 4: Run the tests**
+
+Run: `php tests/run.php`
+Expected: `17 assertions, 0 failures`
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add theme.json tests/test-palette.php
+git commit -m "Give theme.json a base palette the editor can see
+
+theme.json set link colour to var(--accent), which no stylesheet the
+editor loads ever declared. Its own styles.css reaches both the canvas
+and the front end, so the palette belongs there."
+```
+
+---
+
 ### Task 6: The photo-grid block
 
 **Files:**
@@ -1030,6 +1109,11 @@ Keep: the reset and base, `PHOTO GRID`, `TEXT-ONLY POSTS SECTION`, `POST TAGS`,
 `REDUCED MOTION`, and `RESPONSIVE`.
 
 - [ ] **Step 3: Delete the classic files**
+
+`editor-style.css` is safe to delete only because Task 5b moved the palette into
+`theme.json`'s `styles.css`, which the editor canvas loads. Confirm that key is
+present before deleting, and drop `add_theme_support('editor-styles')` and
+`add_editor_style()` in Step 4 as planned.
 
 ```bash
 git rm index.php archive.php single.php page.php search.php 404.php \
