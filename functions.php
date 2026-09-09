@@ -146,6 +146,10 @@ function lumen_setup() {
     register_nav_menus(array(
         'primary' => __('Primary Menu', 'lumen'),
     ));
+
+    // Registered from metadata so block.json stays the single source of truth
+    // for the attribute default the renderer reads.
+    register_block_type(get_template_directory() . '/blocks/photo-grid');
 }
 add_action('after_setup_theme', 'lumen_setup');
 
