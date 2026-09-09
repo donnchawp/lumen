@@ -48,7 +48,7 @@ lumen/
   templates/             index, archive, single, page, search, 404 (.html)
   parts/                 header.html, footer.html
   blocks/photo-grid/     block.json, render.php, editor.js
-  bin/generate-variation.php   dev tool, not shipped
+  bin/generate-variation.php   dev tool; excluded when deploying, see readme.txt
 ```
 
 These are deleted: `index.php`, `archive.php`, `single.php`, `page.php`,
@@ -112,7 +112,21 @@ Dropped into a custom Query Loop it renders nothing, which is the better failure
 a wrong grid would look plausible.
 
 One attribute, `notesHeading`, defaults to "Notes & Writings" so the label is
-editable without a code change. The editor preview uses `ServerSideRender`.
+editable without a code change, through a `TextControl` in the block's inspector.
+
+`editor.js` registers the block on the client. Without it the editor knows nothing
+about the block and every template using it shows an unsupported-block warning
+instead. It is plain ES5 against the `wp.*` globals, because there is no build
+step, and `block.json` names the handle `functions.php` registers rather than a
+file, because `file:./editor.js` makes core look for a generated `editor.asset.php`
+beside it.
+
+The edit function is a static placeholder, not the `ServerSideRender` this spec
+originally called for. `render.php` partitions the posts the surrounding query has
+already run; rendering it through `/wp/v2/block-renderer/` gives it a REST request
+whose main query holds no posts, so the preview would read "Block rendered as
+empty." on every template. A placeholder that says what the block does is worth
+more than a preview that is always blank.
 
 ### Templates
 
@@ -161,8 +175,8 @@ emits `.photo-grid` and `.photo-card`.
 
 ## Behaviour changes
 
-Five behaviours cannot be ported directly. Each needs a deliberate replacement,
-and each one changes something.
+Five behaviours were known in advance not to port directly. Each needs a
+deliberate replacement, and each one changes something.
 
 **Untitled post fallback.** `lumen_get_display_title()` supplies a title for
 untitled posts in six places. `core/post-title` offers no fallback hook, so this
@@ -193,6 +207,77 @@ derivation both go. The reader chooses between two generated variations instead 
 any hex. This is a feature removal, taken deliberately: the theme runs one site, so
 the derivation served a decision made once, and it was the only part of the
 conversion whose feasibility was unproven.
+
+The eight below were not foreseen. They were found while doing the work, each one
+a place where a core block covers less ground than the classic template call it
+replaced. None was worth stopping for, and all eight are losses rather than
+trades, so they are written down here instead.
+
+**Paginated posts.** `single.php:39-44` and `page.php:34-39` called
+`wp_link_pages()`. `core/post-content` renders the current page of the content and
+offers no page links, and core ships no block that does. A post using
+`<!--nextpage-->` therefore renders page one with no way to reach the rest.
+Nothing replaces it: no post on inphotos.org is paginated, and a second theme
+block whose only job is to reproduce `wp_link_pages()` is more theme than that
+case is worth.
+
+**The search result count.** `search.php:32-42` rendered
+`_n('%s result', '%s results', $wp_query->found_posts)` under the query title. No
+core block exposes `found_posts`. `core/query-title` still names what was searched
+for and the pagination still shows how far the results run, so what is gone is the
+total at a glance.
+
+**The posts-page heading.** `index.php:19-27` rendered the posts page's own title
+in the `is_home() && !is_front_page()` case, which is what a static front page
+produces. That page falls to `templates/index.html`, there being no `home.html`,
+and `index.html` uses `header-home.html` — so the `<h1>` is the site title and the
+page's own title is not shown at all. inphotos.org lists posts on its front page
+and never reaches this branch. Setting a static front page would.
+
+**Archive descriptions.** `archive.php:21` called `the_archive_description()`,
+which covers term descriptions, author biographies and post-type archive
+descriptions. `core/term-description` is the taxonomy third of that, so author and
+post-type archives now render no description at all. inphotos.org has one author
+and no custom post types, so the loss only becomes visible if an author biography
+is filled in later.
+
+**Menu depth.** `header.php:41` passed `'depth' => 1` to `wp_nav_menu()`, so a
+menu with children rendered only its top level and the header stayed one line.
+`core/navigation` has no depth control. Submenus now render, as a flyout or an
+inline list depending on the block's settings. The menu on inphotos.org is flat,
+so nothing changes until a child item is added — at which point the header changes
+shape without anyone asking it to.
+
+**A site with no menu.** `header.php:39` guarded on `has_nav_menu('primary')` and
+passed `'fallback_cb' => false`, so a site with nothing assigned rendered no
+navigation whatsoever. `core/navigation` falls back instead:
+`block_core_navigation_get_fallback_blocks()` takes the most recent `wp_navigation`
+post if one exists and a `core/page-list` block if none does. An unconfigured site
+now gets a list of its pages in the header rather than an empty space.
+
+**Template strings.** Every string in `templates/*.html` and `parts/*.html` is
+hardcoded English: the pagination labels, the four empty-state messages, the search
+placeholder, the comment pager. The classic templates passed each through
+`esc_html_e()`. A template file is static markup with no way to call a translation
+function, and core does not translate template content. What survives in PHP — the
+untitled fallback, the copyright line, the link home, the block's editor labels —
+is still translated, and `load_theme_textdomain()` stays for it. Because most of
+the visible chrome is no longer among them, `style.css` drops the
+`translation-ready` tag. The theme is now partly internationalised, and a tag
+claiming otherwise is exactly the sort of claim someone would act on before
+finding out.
+
+**The skip link.** All five classic templates opened
+`<main id="primary" class="site-main" tabindex="-1">`, and `header.php` printed a
+skip link ahead of it in the markup. Block themes get core's
+`wp_enqueue_block_template_skip_link()` instead, which builds the link in
+JavaScript from `document.querySelector('main')` and injects it before
+`.wp-site-blocks`. Two things follow. With JavaScript off there is no skip link at
+all, where the theme previously shipped one that needed nothing. And core does not
+put `tabindex="-1"` on the target, so where focus lands after following `#primary`
+is left to the browser rather than settled by the markup, which is the whole
+reason the attribute was there. `core/group` cannot carry `tabindex`, so restoring
+it would mean a second `render_block` filter; it is recorded rather than fixed.
 
 ## Migration
 

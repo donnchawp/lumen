@@ -21,7 +21,7 @@
         },
         {
             "step": "runPHP",
-            "code": "<?php require_once '/wordpress/wp-load.php'; require_once '/wordpress/wp-content/themes/lumen/bin/playground-content.php';"
+            "code": "<?php require_once '/wordpress/wp-load.php'; define('LUMEN_PLAYGROUND_RESET', true); require_once '/wordpress/wp-content/themes/lumen/bin/playground-content.php';"
         }
     ]
 }

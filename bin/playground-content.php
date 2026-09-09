@@ -2,12 +2,13 @@
 /**
  * Seed content for a Playground run.
  *
- * Loaded by bin/blueprint.json after WordPress has booted. Every post here
- * exists to exercise one branch the templates have to get right: an untitled
- * post, a post with no featured image, a protected post that is also untitled,
- * and enough photos to paginate.
+ * Loaded by bin/blueprint.json after WordPress has booted, with
+ * LUMEN_PLAYGROUND_RESET defined. Every post here exists to exercise one branch
+ * the templates have to get right: an untitled post, a post with no featured
+ * image, a protected post that is also untitled, and enough photos to paginate.
  *
- * Development only. Nothing in the theme loads this.
+ * Development only. Nothing in the theme loads this, and it should not be
+ * deployed: see readme.txt on excluding bin/, tests/ and docs/.
  *
  * @package Lumen
  */
@@ -21,6 +22,32 @@
 // empties the site. Playground's runPHP step runs under the CLI SAPI.
 if (PHP_SAPI !== 'cli') {
     exit;
+}
+
+// The SAPI check above closes the HTTP door and no more than that. WP-CLI also
+// runs under the CLI SAPI, so on the live site
+//
+//   wp eval-file wp-content/themes/lumen/bin/playground-content.php
+//
+// would satisfy it and then delete every post and page. Nothing about that
+// command reads as destructive, and someone poking at an unfamiliar theme
+// directory could plausibly type it.
+//
+// So the caller has to say so as well. A constant rather than an environment
+// variable: an exported variable can linger in a shell for the rest of the
+// session, or be inherited by something that never meant to set it, whereas a
+// constant has to be defined in this same PHP process by whoever includes this
+// file. bin/blueprint.json defines it; there is no way to define it from
+// eval-file's command line without writing a second file that says the same
+// thing, which is the deliberate act this is asking for.
+if (!defined('LUMEN_PLAYGROUND_RESET') || !LUMEN_PLAYGROUND_RESET) {
+    fwrite(
+        STDERR,
+        "playground-content.php deletes every post and page before seeding.\n"
+        . "Define LUMEN_PLAYGROUND_RESET before including it if that is what you want:\n"
+        . "  php -r \"define('LUMEN_PLAYGROUND_RESET', true); require 'wp-load.php'; require 'bin/playground-content.php';\"\n"
+    );
+    exit(1);
 }
 
 require_once ABSPATH . 'wp-admin/includes/image.php';

@@ -1,14 +1,16 @@
 === Lumen ===
 Contributors: donncha
-Requires at least: 6.0
+Requires at least: 6.6
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.6.5
+Stable tag: 2.0.0
 License: GNU General Public License v2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
 == Description ==
-A dark, gallery-first WordPress theme designed for photoblogs. Features a responsive CSS Grid layout with hover overlays, featured image support, and a dedicated "Notes & Writings" section at the bottom of archive pages for text-only posts.
+A dark, gallery-first WordPress block theme designed for photoblogs. Features a responsive CSS Grid layout with hover overlays, featured image support, and a dedicated "Notes & Writings" section at the bottom of archive pages for text-only posts.
+
+Since 2.0.0 this is a block theme. Every template is edited under Appearance > Editor rather than by editing PHP, and the palette is chosen there too. There is no Customizer screen any more; see the notes below.
 
 == Installation ==
 1. Upload the theme files to `/wp-content/themes/lumen`
@@ -16,6 +18,7 @@ A dark, gallery-first WordPress theme designed for photoblogs. Features a respon
 3. Run Regenerate Thumbnails if you already had photos in the Media Library (see Recommended Plugins below)
 4. Set a featured image on each photo post
 5. Posts without featured images will automatically appear in the text-only section
+6. If you are coming from Lumen 1.x, read "Upgrading from Lumen 1.x" below before you do anything else
 
 == Features ==
 - Dark, minimal design that puts photos first
@@ -23,9 +26,10 @@ A dark, gallery-first WordPress theme designed for photoblogs. Features a respon
 - Photos shown whole in the grid, at their own shape, never cropped to fit a cell
 - Overlay with title and date, shown on hover, on keyboard focus, and always on touch devices
 - Text-only posts section on archive pages
-- Customizer support for background color, accent color and photo grid column width
+- Two style variations, Dark and Light, switched in the Site Editor
+- Templates and template parts editable in the Site Editor
 - Accessible, semantic HTML5 markup
-- No dependencies, no jQuery, no JavaScript of its own
+- No dependencies and no jQuery. The theme ships no front-end JavaScript; the one script it does register loads only in the block editor
 
 == Notes ==
 
@@ -38,6 +42,37 @@ The featured image of a password-protected post is not shown until the password 
 = How the gallery and notes split works =
 Posts are partitioned after the main query runs: those with a featured image go to the grid, the rest to "Notes & Writings". Because the split happens after pagination, the notes section on any given page lists only the text posts that fall on that page.
 
+The grid is a block, Photo Grid, and it is what the index, archive and search templates place inside their Query Loop. It has one setting, the heading above the notes list, in the block's sidebar. It renders nothing inside a Query Loop that has been switched to its own custom query, because such a query is not the one it partitions.
+
+= The two style variations =
+Dark and Light. Dark is what the theme paints if you never choose anything.
+
+To switch: Appearance > Editor > Styles, then the "Browse styles" list, then Dark or Light, then Save.
+
+Neither palette is hand-picked. Both are generated from one background colour and one accent colour by the same derivation the 1.4.0 Customizer used at request time, so every text tone in both is measured against the surface it is really painted on and none of them ships below WCAG AA. That is why there are two ready-made variations rather than a colour picker: the picker is now a generator, run once, and its output is checked in as styles/dark.json and styles/light.json.
+
+= The Customizer is gone =
+Appearance > Customize no longer offers background colour, accent colour or photo grid column width. Block themes have no Customizer, and two of the three settings are answered by the style variations above. The column width is a constant in functions.php, LUMEN_GRID_MIN_WIDTH_DEFAULT, at the same 450px default 1.3.0 shipped.
+
+Your saved values are not deleted. lumen_background_color, lumen_accent_color and lumen_grid_min_width all stay in the database, so switching back to Lumen 1.x finds them intact.
+
+= Upgrading from Lumen 1.x =
+Do the Site Editor classic-menu import **before** switching themes for any reason. register_nav_menus() is gone, so wp_map_nav_menu_locations() intersects the stored locations against an empty registry on after_switch_theme and writes the empty result back, discarding the stored `primary` assignment. The menu object itself survives, and WP_Navigation_Fallback will still find it: with the location gone it looks for a menu whose slug is `primary`, and failing that takes the most recently created menu, empty or not. If that newest menu happens to be empty, core does not try an older one — it falls back to a list of your pages instead. So the import is worth doing while the location assignment is still there to be read.
+
+In practice: activate Lumen 2.0.0, open Appearance > Editor, and accept the offer to import your existing menu into the navigation block. Do that first, before switching to any other theme and back.
+
+Back up the database before upgrading, as with any theme that changes this much.
+
+== Development ==
+
+bin/, tests/ and docs/ are development directories. They are in the repository because there is no build step to strip them, and nothing in the theme loads any of them, but they should be excluded when deploying to a live site:
+
+- bin/ contains the style variation generator and a WordPress Playground fixture script. The fixture script deletes every post and page before seeding its own. It refuses to run unless the constant LUMEN_PLAYGROUND_RESET is defined by whoever includes it, which is a deliberate acknowledgement and not something you would type by accident, but the file has no business being on a live server either way.
+- tests/ contains the palette test suite, run with `php tests/run.php`.
+- docs/ contains the design specification.
+
+If you deploy with rsync, exclude them; if you build a zip, leave them out of it.
+
 == Recommended Plugins ==
 - Regenerate Thumbnails
 
@@ -48,9 +83,20 @@ The theme registers its own image sizes on activation. Photos already in your Me
 Lumen WordPress Theme, (C) 2026 Donncha O Caoimh
 Lumen is distributed under the terms of the GNU GPL version 2 or later.
 
-This theme bundles no third-party assets, fonts, images, or libraries. It uses the system font stack via CSS and ships no JavaScript of its own.
+This theme bundles no third-party assets, fonts, images, or libraries. It uses the system font stack via CSS. The only JavaScript it ships is blocks/photo-grid/editor.js, which registers one block with the block editor and never loads on the site itself.
 
 == Changelog ==
+
+= 2.0.0 =
+* Lumen is a block theme. The six PHP templates, the header, the footer, comments.php and searchform.php are replaced by templates/*.html and parts/*.html, built out of core blocks, and every one of them is now editable under Appearance > Editor. Requires at least is 6.6, up from 6.0, which is what block themes of this shape need.
+* The photo grid is a block, lumen/photo-grid, rather than a template part included by three templates. The partition, the thumbnail cache priming, the computed sizes attribute and the explicit fetchpriority on the first image all moved with it unchanged. The heading above the notes list is a block setting now instead of a hardcoded string.
+* Two style variations, Dark and Light, replace the Customizer's colour settings. Dark renders identically to 1.6.5, hex for hex. Both are generated by bin/generate-variation.php from the same contrast maths that used to run on every request, and it refuses to write a variation whose text fails WCAG AA, so the palettes are still proven rather than eyeballed.
+* The Customizer is gone entirely, including the photo grid column width, which is now a constant at the same 450px default. Your stored values are left in the database untouched.
+* register_nav_menus() is gone with it, and that has a cost on a theme switch. Read "Upgrading from Lumen 1.x" above before you activate this.
+* Things the block templates cannot do that the PHP ones did, all small and all deliberate: paginated posts using <!--nextpage--> render only their first page, since core/post-content has no wp_link_pages(); the search results page no longer prints a result count; author and post-type archives no longer print their description, only taxonomy terms do; the primary menu is no longer limited to one level; a site with no menu assigned now gets a list of its pages in the header rather than nothing; and on a static-front setup the posts page shows the site title as its heading rather than its own.
+* The strings in the templates are hardcoded English. A template file cannot call a translation function, and core does not translate template content, so the pagination labels, the empty-state messages and the search placeholder are no longer translatable. What is left in PHP still is. The translation-ready tag has been dropped from style.css to match.
+* The skip link is core's now, which builds it in JavaScript. With JavaScript off there is no skip link, where before there was one that needed nothing.
+* editor-style.css is deleted. theme.json carries the palette and the block styling into the editor, which is what that file existed to do.
 
 = 1.6.5 =
 * Tested up to 7.1, which is the version it has been running on for a while. No code changes. Requires at least stays at 6.0, which is correct: the newest core function the theme calls is wp_omit_loading_attr_threshold(), and that has been in WordPress since 5.9.
