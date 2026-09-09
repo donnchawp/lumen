@@ -40,5 +40,22 @@
             }
         },
         "css": ":root{--bg-primary:#0a0a0a;--bg-secondary:#111111;--bg-tertiary:#1a1a1a;--border:#1a1a1a;--border-hover:#333333;--text-primary:#e5e5e5;--text-secondary:#888888;--text-muted:#7c7c7c;--accent:#ffffff;--accent-overlay:#ffffff;--text-overlay:#888888;}"
-    }
+    },
+    "templateParts": [
+        {
+            "name": "header",
+            "title": "Header",
+            "area": "header"
+        },
+        {
+            "name": "header-home",
+            "title": "Header (home)",
+            "area": "header"
+        },
+        {
+            "name": "footer",
+            "title": "Footer",
+            "area": "footer"
+        }
+    ]
 }

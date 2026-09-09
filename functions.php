@@ -160,6 +160,40 @@ function lumen_register_blocks() {
 add_action('init', 'lumen_register_blocks');
 
 /**
+ * The footer copyright line.
+ *
+ * footer.php built this line in PHP, from wp_date('Y') and the site name.
+ * parts/footer.html cannot: a template part is static markup. Writing either
+ * value into the file would leave the year wrong every January and the name
+ * wrong the first time the site is renamed, and would drop the one translated
+ * string the footer has.
+ *
+ * A block binding keeps the paragraph in the template, where the Site Editor
+ * can still move and style it, and the string here. The text written into
+ * parts/footer.html is only what the editor and a stale render show; this is
+ * the value that ships.
+ */
+function lumen_register_bindings() {
+    register_block_bindings_source('lumen/copyright', array(
+        'label'              => __('Copyright line', 'lumen'),
+        'get_value_callback' => 'lumen_get_copyright_line',
+    ));
+}
+add_action('init', 'lumen_register_bindings');
+
+/**
+ * @return string The copyright line, as plain text.
+ */
+function lumen_get_copyright_line() {
+    return sprintf(
+        /* translators: 1: Current year. 2: Site name. */
+        __('© %1$s %2$s. All rights reserved.', 'lumen'),
+        wp_date('Y'),
+        get_bloginfo('name')
+    );
+}
+
+/**
  * Enqueue Scripts and Styles
  */
 function lumen_scripts() {
@@ -340,6 +374,45 @@ function lumen_get_display_title($post = null) {
 }
 
 /**
+ * Supply a title for untitled posts.
+ *
+ * lumen_get_display_title() used to be called from the templates directly.
+ * core/post-title offers no fallback hook, so the value is filtered instead.
+ * This reaches slightly further than the old function did, because a filter
+ * cannot see which template asked: an untitled post now reads "Untitled"
+ * wherever core prints a title, including the admin lists and the feeds.
+ *
+ * Emptiness is tested against the raw post_title rather than $title for the
+ * same reason lumen_get_display_title() does. core applies this filter after
+ * it has prefixed protected and private posts, so an untitled protected post
+ * arrives here as "Protected: ", which is not empty. Testing $title would
+ * therefore never fire the fallback for exactly the posts whose prefixing
+ * lumen_get_display_title() goes to the trouble of reproducing.
+ *
+ * No recursion: lumen_get_display_title() only calls get_the_title(), and so
+ * only re-enters this filter, on its non-empty branch, which is the branch
+ * this function has already returned on.
+ *
+ * @param string $title The post title, already prefixed by core.
+ * @param int    $id    The post ID. 0 when a caller applies the filter without one.
+ * @return string
+ */
+function lumen_filter_empty_title($title, $id = 0) {
+    // Without an id there is no raw title to consult and no post to build a
+    // fallback from, so the title is passed through untouched.
+    if (!$id) {
+        return $title;
+    }
+
+    if ('' !== trim(wp_strip_all_tags(get_post_field('post_title', $id)))) {
+        return $title;
+    }
+
+    return lumen_get_display_title($id);
+}
+add_filter('the_title', 'lumen_filter_empty_title', 10, 2);
+
+/**
  * Whether a post's photo should be shown.
  *
  * This is the theme's definition of "this post is a photo": the grid uses it to
@@ -358,6 +431,29 @@ function lumen_get_display_title($post = null) {
 function lumen_is_photo_post($post = null) {
     return has_post_thumbnail($post) && !post_password_required($post);
 }
+
+/**
+ * Never render a protected post's featured image.
+ *
+ * On a photoblog the featured image is the content being protected, so it must
+ * not sit above the password form. lumen_is_photo_post() enforced this in
+ * single.php and page.php; core/post-featured-image renders whenever a
+ * thumbnail exists and takes no such predicate, so the rule moves to the value
+ * every caller derives from. Returning an empty string is enough to suppress
+ * the whole figure, because the block bails on empty markup.
+ *
+ * The post id core passes is used rather than the ambient global $post, so
+ * that a card rendered outside the loop is judged on its own post, the way
+ * lumen_is_photo_post() is.
+ *
+ * @param string $html    The featured image markup.
+ * @param int    $post_id The post the image belongs to.
+ * @return string
+ */
+function lumen_hide_protected_thumbnail($html, $post_id) {
+    return post_password_required($post_id) ? '' : $html;
+}
+add_filter('post_thumbnail_html', 'lumen_hide_protected_thumbnail', 10, 2);
 
 /**
  * The first media library image in a post's content, for posts that have no

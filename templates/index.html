@@ -1,0 +1,28 @@
+<!-- wp:template-part {"slug":"header-home","tagName":"header"} /-->
+<!-- wp:group {"tagName":"main","className":"site-main","anchor":"primary","layout":{"type":"default"}} -->
+<main class="wp-block-group site-main" id="primary">
+    <!-- wp:query {"queryId":0,"query":{"inherit":true}} -->
+    <div class="wp-block-query">
+        <!-- wp:lumen/photo-grid /-->
+        <!-- wp:query-pagination {"className":"pagination","layout":{"type":"flex","justifyContent":"center"}} -->
+        <!-- wp:query-pagination-previous {"label":"← Previous"} /-->
+        <!-- wp:query-pagination-numbers /-->
+        <!-- wp:query-pagination-next {"label":"Next →"} /-->
+        <!-- /wp:query-pagination -->
+        <!-- wp:query-no-results -->
+        <!-- wp:group {"className":"no-posts","layout":{"type":"default"}} -->
+        <div class="wp-block-group no-posts">
+            <!-- wp:heading -->
+            <h2 class="wp-block-heading">No posts yet</h2>
+            <!-- /wp:heading -->
+            <!-- wp:paragraph -->
+            <p>Start publishing to see your photos here.</p>
+            <!-- /wp:paragraph -->
+        </div>
+        <!-- /wp:group -->
+        <!-- /wp:query-no-results -->
+    </div>
+    <!-- /wp:query -->
+</main>
+<!-- /wp:group -->
+<!-- wp:template-part {"slug":"footer","tagName":"footer"} /-->
