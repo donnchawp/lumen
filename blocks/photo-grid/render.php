@@ -17,10 +17,12 @@ if (!defined('ABSPATH')) {
 }
 
 /*
- * Inherited queries only. Every template in this theme uses one, and building a
- * WP_Query from block context would duplicate core for no gain. Rendering
- * nothing is the better failure: a grid built from the wrong query would look
- * plausible.
+ * Refuse to render inside a Query block running its own custom (non-inheriting)
+ * query: that query is not the one this grid partitions. A grid built from the
+ * wrong query would look plausible, which is why rendering nothing is the
+ * better failure. Outside any Query block context['query'] is simply absent,
+ * so this falls through and renders from the ambient main query, as every
+ * template in this theme does.
  */
 if (!empty($block->context['query']) && empty($block->context['query']['inherit'])) {
     return;
