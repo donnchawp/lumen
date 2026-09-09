@@ -19,5 +19,6 @@
         "align": false,
         "className": false
     },
+    "editorScript": "lumen-photo-grid-editor",
     "render": "file:./render.php"
 }

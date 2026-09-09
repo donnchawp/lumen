@@ -1,6 +1,6 @@
 <?php
 /**
- * The gallery loop: photo grid, notes list, pagination.
+ * The gallery loop: photo grid and notes list.
  *
  * Rendered by the lumen/photo-grid block inside an inheriting Query block. The
  * caller is responsible for the surrounding have_posts() check and for the
@@ -72,8 +72,8 @@ update_post_thumbnail_cache();
     // loop. Read from core rather than hardcoded, so a site filtering the
     // threshold still gets what it asked for.
     //
-    // In core since 5.9, so it sits inside the theme's declared 6.0 floor and
-    // needs no function_exists() guard. Not to be confused with
+    // In core since 5.9, so it sits well inside the theme's declared 6.6 floor
+    // and needs no function_exists() guard. Not to be confused with
     // wp_get_loading_optimization_attributes() named in the note above, which is
     // 6.3 and is only described here, never called.
     $lumen_eager_count = wp_omit_loading_attr_threshold();

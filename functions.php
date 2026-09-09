@@ -142,10 +142,14 @@ function lumen_setup() {
     // now, and the block styling with it. What no longer previews in the editor
     // is the post-content typography .single-content applies on the front end.
     //
-    // register_nav_menus() went at the same time. A block theme has no Menus
-    // screen for a registered location to appear on, and core/navigation finds
-    // an existing classic menu through the nav_menu_locations theme mod, which
-    // is stored whether or not the location is registered.
+    // register_nav_menus() went at the same time. What makes that safe is
+    // WP_Navigation_Fallback::get_fallback_classic_menu(), which tries three
+    // things in order: the menu at the "primary" location, then a menu whose
+    // slug is "primary", then the most recently created menu. Only the first
+    // depends on a registered location, so an unregistered theme still finds
+    // the existing menu and offers it for import. Dropping the registration is
+    // not free — see lumen_get_grid_min_width() for what it costs on a theme
+    // switch — but it does not cost the import.
     add_theme_support('align-wide');
 }
 add_action('after_setup_theme', 'lumen_setup');
@@ -154,6 +158,28 @@ add_action('after_setup_theme', 'lumen_setup');
  * Register Blocks
  */
 function lumen_register_blocks() {
+    // block.json names this handle rather than a file, because "file:./editor.js"
+    // makes core look for an editor.asset.php beside it for the dependency list
+    // and the version, and that file is a build artefact. There is no build
+    // step, so the dependencies are stated here instead. wp-block-editor and
+    // wp-components are what the notesHeading control needs; the other three are
+    // registerBlockType, createElement and __.
+    //
+    // Registered before the block type, because register_block_type() resolves
+    // editorScript against the handles that exist at that moment.
+    wp_register_script(
+        'lumen-photo-grid-editor',
+        get_template_directory_uri() . '/blocks/photo-grid/editor.js',
+        array('wp-blocks', 'wp-element', 'wp-block-editor', 'wp-components', 'wp-i18n'),
+        wp_get_theme()->get('Version'),
+        true
+    );
+
+    // The counterpart of load_theme_textdomain() for the four strings in
+    // editor.js. Without it their __() calls never consult anything, however
+    // complete a translation someone drops into /languages.
+    wp_set_script_translations('lumen-photo-grid-editor', 'lumen', get_template_directory() . '/languages');
+
     // Registered from metadata so block.json stays the single source of truth
     // for the attribute default the renderer reads.
     register_block_type(get_template_directory() . '/blocks/photo-grid');
@@ -191,14 +217,23 @@ function lumen_register_bindings() {
 add_action('init', 'lumen_register_bindings');
 
 /**
+ * The copyright line.
+ *
+ * Escaped, unlike lumen_get_home_link() below, because this one is plain text.
+ * Core passes a bound paragraph's value through wp_kses_post(), so a site name
+ * containing markup would render as markup here where footer.php showed it
+ * literally. get_bloginfo('name') returns the raw option, and wp_date() is
+ * format-string driven and cannot, but escaping both is cheaper than a comment
+ * explaining why only one of them needs it.
+ *
  * @return string The copyright line, as plain text.
  */
 function lumen_get_copyright_line() {
     return sprintf(
         /* translators: 1: Current year. 2: Site name. */
         __('© %1$s %2$s. All rights reserved.', 'lumen'),
-        wp_date('Y'),
-        get_bloginfo('name')
+        esc_html(wp_date('Y')),
+        esc_html(get_bloginfo('name'))
     );
 }
 
@@ -444,6 +479,52 @@ function lumen_comment_form_heading($defaults) {
     return $defaults;
 }
 add_filter('comment_form_defaults', 'lumen_comment_form_heading');
+
+/**
+ * Name the post navigation landmark.
+ *
+ * single.php gave it aria-label="Post navigation" (single.php:52). A group
+ * block can be told to render as a nav and cannot be given an aria-label, so a
+ * single post ends up with two nav landmarks — the site menu and this — and
+ * only one of them says which is which. A screen reader then offers "navigation"
+ * twice with nothing to choose between them.
+ *
+ * The alternative was dropping tagName so the group renders a div, since an
+ * anonymous landmark is worse than none. That loses a real landmark: previous
+ * and next post links are exactly what the role is for. This restores the
+ * classic markup instead.
+ *
+ * The coupling is the className, which is what templates/single.html sets and
+ * what style.css already styles, so a Site Editor user who removes it has
+ * removed the thing being labelled as well. Only the block's own outermost tag
+ * is touched, and only when it really is a nav, so a group that has since been
+ * changed back to a div is left alone rather than given an attribute that means
+ * nothing on it.
+ *
+ * @param string $block_content The rendered block markup.
+ * @param array  $block         The parsed block, including its attributes.
+ * @return string
+ */
+function lumen_label_post_navigation($block_content, $block) {
+    if ('core/group' !== $block['blockName'] || empty($block['attrs']['className'])) {
+        return $block_content;
+    }
+
+    if (!in_array('post-navigation', preg_split('/\s+/', $block['attrs']['className']), true)) {
+        return $block_content;
+    }
+
+    $tags = new WP_HTML_Tag_Processor($block_content);
+
+    if (!$tags->next_tag() || 'NAV' !== $tags->get_tag()) {
+        return $block_content;
+    }
+
+    $tags->set_attribute('aria-label', __('Post navigation', 'lumen'));
+
+    return $tags->get_updated_html();
+}
+add_filter('render_block', 'lumen_label_post_navigation', 10, 2);
 
 /**
  * The first media library image in a post's content, for posts that have no
