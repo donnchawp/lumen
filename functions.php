@@ -160,23 +160,31 @@ function lumen_register_blocks() {
 add_action('init', 'lumen_register_blocks');
 
 /**
- * The footer copyright line.
+ * The two paragraphs in the templates that a static file cannot hold.
  *
- * footer.php built this line in PHP, from wp_date('Y') and the site name.
- * parts/footer.html cannot: a template part is static markup. Writing either
- * value into the file would leave the year wrong every January and the name
- * wrong the first time the site is renamed, and would drop the one translated
- * string the footer has.
+ * footer.php built its copyright line from wp_date('Y') and the site name, and
+ * 404.php linked home through home_url(). A template is static markup, so
+ * writing those values into parts/footer.html and templates/404.html would
+ * leave the year wrong every January, the site name wrong the first time the
+ * site is renamed, and the "back to the gallery" link pointing at the domain
+ * root on any install in a subdirectory. It would also drop the only two
+ * translated strings the templates have.
  *
- * A block binding keeps the paragraph in the template, where the Site Editor
- * can still move and style it, and the string here. The text written into
- * parts/footer.html is only what the editor and a stale render show; this is
- * the value that ships.
+ * A binding keeps each paragraph in its template, where the Site Editor can
+ * still move and style it, and the string here. What is written into the
+ * template file is only what the editor and a stale render show; these are the
+ * values that ship. Core passes a bound paragraph through wp_kses_post(), so
+ * the anchor below survives.
  */
 function lumen_register_bindings() {
     register_block_bindings_source('lumen/copyright', array(
         'label'              => __('Copyright line', 'lumen'),
         'get_value_callback' => 'lumen_get_copyright_line',
+    ));
+
+    register_block_bindings_source('lumen/home-link', array(
+        'label'              => __('Link home', 'lumen'),
+        'get_value_callback' => 'lumen_get_home_link',
     ));
 }
 add_action('init', 'lumen_register_bindings');
@@ -190,6 +198,17 @@ function lumen_get_copyright_line() {
         __('© %1$s %2$s. All rights reserved.', 'lumen'),
         wp_date('Y'),
         get_bloginfo('name')
+    );
+}
+
+/**
+ * @return string An anchor to the site's front page.
+ */
+function lumen_get_home_link() {
+    return sprintf(
+        '<a href="%1$s">%2$s</a>',
+        esc_url(home_url('/')),
+        esc_html__('Back to the gallery', 'lumen')
     );
 }
 
@@ -454,6 +473,26 @@ function lumen_hide_protected_thumbnail($html, $post_id) {
     return post_password_required($post_id) ? '' : $html;
 }
 add_filter('post_thumbnail_html', 'lumen_hide_protected_thumbnail', 10, 2);
+
+/**
+ * Keep the comment reply title at h2.
+ *
+ * comments.php passed these two strings to comment_form() itself.
+ * core/post-comments-form exposes no heading level, so without this the title
+ * reverts to core's h3, and that h3 skips a level: core/comments-title renders
+ * nothing until a post has its first comment, so on an uncommented post the
+ * reply title would follow the h1 post title with no h2 between them.
+ *
+ * @param array $defaults The comment form defaults.
+ * @return array
+ */
+function lumen_comment_form_heading($defaults) {
+    $defaults['title_reply_before'] = '<h2 id="reply-title" class="comment-reply-title">';
+    $defaults['title_reply_after']  = '</h2>';
+
+    return $defaults;
+}
+add_filter('comment_form_defaults', 'lumen_comment_form_heading');
 
 /**
  * The first media library image in a post's content, for posts that have no

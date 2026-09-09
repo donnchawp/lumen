@@ -12,7 +12,14 @@
  * @package Lumen
  */
 
-if (!defined('ABSPATH')) {
+// Nothing here is part of rendering a page. On a live install these files sit
+// under wp-content/themes/, so without this a browser could run the suite.
+//
+// ABSPATH would be the wrong test here even though this file needs WordPress
+// loaded: ABSPATH is defined in every web request, so it would guard against a
+// direct hit on the URL and nothing else, and the wp_delete_post() loop below
+// empties the site. Playground's runPHP step runs under the CLI SAPI.
+if (PHP_SAPI !== 'cli') {
     exit;
 }
 
