@@ -10,7 +10,7 @@ Requires PHP: 7.4
 License: GNU General Public License v2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 Text Domain: lumen
-Tags: blog, photography, one-column, grid-layout, custom-colors, custom-menu, featured-images, editor-style, translation-ready, sticky-post, threaded-comments
+Tags: blog, photography, one-column, grid-layout, custom-colors, custom-menu, featured-images, full-site-editing, style-variations, wide-blocks, translation-ready, sticky-post, threaded-comments
 */
 
 /* ========== CSS RESET & BASE ========== */
@@ -20,7 +20,19 @@ Tags: blog, photography, one-column, grid-layout, custom-colors, custom-menu, fe
     padding: 0;
 }
 
-:root {
+/* The palette, and the last word on it belongs to somebody else.
+ *
+ * theme.json carries these same eleven properties, and each style variation
+ * under styles/ carries its own set. WordPress prints all of that as the
+ * global stylesheet, which comes before this file in the document, so a plain
+ * :root here would outrank the variation the reader had selected and pin the
+ * site to the dark palette for ever. :where() drops this block to zero
+ * specificity, which turns it into what it is meant to be: what paints if no
+ * global stylesheet arrives at all.
+ *
+ * Keep the values in step with theme.json's styles.css and with styles/dark.json,
+ * which bin/generate-variation.php writes from lumen_palette(). */
+:where(:root) {
     --bg-primary: #0a0a0a;
     --bg-secondary: #111111;
     --bg-tertiary: #1a1a1a;
@@ -40,6 +52,11 @@ Tags: blog, photography, one-column, grid-layout, custom-colors, custom-menu, fe
        text on black the moment the page went light. */
     --accent-overlay: #ffffff;
     --text-overlay: #888888;
+}
+
+/* The frame and the scrim, which no style variation has an opinion about, so
+   they keep full specificity and stay owned here. */
+:root {
     /* How opaque the scrim is at its foot. functions.php owns this one: it also
        derives the surface the overlay text is checked against from it, so the
        two cannot drift. */
@@ -107,18 +124,12 @@ img {
     border-bottom: 1px solid var(--border);
 }
 
-.site-title {
-    font-size: 2.5rem;
-    font-weight: 200;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    margin: 0;
-    color: var(--accent);
-}
-
-.site-title a {
-    color: var(--accent);
-}
+/* .site-title's own rules, and the navigation's type and resting colour, are in
+   theme.json now under styles.blocks: they style one core block each, and that
+   is the only place the Site Editor can see them. What is left in this section
+   styles the group the header part wraps those blocks in, needs a media query,
+   or is a cascade fight theme.json cannot win — see the navigation hover
+   below. */
 
 .site-description {
     color: var(--text-secondary);
@@ -127,34 +138,31 @@ img {
     margin-top: 0.5rem;
 }
 
-.site-nav {
+/* Qualified by the element, because core/navigation copies the block's classes
+   onto its inner <ul> as well as onto the <nav>: a bare .site-nav rule pays this
+   margin twice and lands the menu 1.5rem low. Centring is the template's, on
+   the block's layout attribute — core threads that down to the page-list
+   fallback through a custom property, which a rule here cannot reach. */
+nav.site-nav {
     margin-top: 1.5rem;
 }
 
-/* wp_nav_menu emits a ul.menu that the theme never styled, so the items fell
-   back to browser defaults: a disc each, one per line. The reset at the top of
-   this file zeroes list padding, which left those markers hanging outside the
-   list rather than indented inside it. */
+/* Both <ul>s: the block's own container and the nested page-list inside it,
+   which is what renders on a site with no menu assigned. Core flexes both of
+   them already and spaces them from --wp--style--block-gap, a single value; the
+   row gap wants to be tighter than the column gap for a menu that outgrows a
+   phone. 2rem is what the 1rem either side of two adjacent anchors used to add
+   up to, so the spacing is unchanged. */
 .site-nav ul {
-    list-style: none;
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    /* Row gap first, for a menu that outgrows a phone. 2rem is what the 1rem
-       either side of two adjacent anchors used to add up to, so the spacing is
-       unchanged; carrying it on the anchors instead would leave wrapped rows
-       touching, and put a stray 1rem outside the first and last items. */
     gap: 0.5rem 2rem;
 }
 
-.site-nav a {
-    color: var(--text-secondary);
-    font-size: 0.85rem;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-}
-
-.site-nav a:hover {
+/* core/navigation pins its links to `color: inherit` with a doubled class
+   selector, which is not worth out-specifying: the way to colour them is to
+   colour something they inherit from. theme.json sets the resting colour on the
+   block; this is the hover, on the item rather than on the link, for the same
+   reason. */
+.site-nav .wp-block-navigation-item:hover {
     color: var(--accent);
 }
 
@@ -168,9 +176,10 @@ img {
 /* ========== PHOTO GRID ========== */
 .photo-grid {
     display: grid;
-    /* --photo-grid-min is set inline from the Customizer; the fallback matches
-       LUMEN_GRID_MIN_WIDTH_DEFAULT. min(..., 100%) keeps a wide setting from
-       overflowing a viewport narrower than one column. */
+    /* --photo-grid-min is set inline by lumen_scripts() from
+       LUMEN_GRID_MIN_WIDTH_DEFAULT, which the fallback here matches.
+       min(..., 100%) keeps a wide value from overflowing a viewport narrower
+       than one column. */
     grid-template-columns: repeat(auto-fill, minmax(min(var(--photo-grid-min, 450px), 100%), 1fr));
     gap: 1.5rem;
     /* Grid items stretch to the tallest in their row by default. Without this,
@@ -332,13 +341,11 @@ img {
     margin: 0 auto;
 }
 
-.single-title {
-    font-size: 2rem;
-    font-weight: 300;
-    letter-spacing: 0.02em;
-    margin-bottom: 0.5rem;
-}
-
+/* .single-title is theme.json's, under styles.blocks["core/post-title"]. The
+   line below is not: .single-meta is the group holding the date and the
+   categories, and scoping its colour to core/post-date would leave the
+   categories beside it unstyled. core/post-terms cannot take it either — the
+   tag list further down is the same block, styled quite differently. */
 .single-meta {
     color: var(--text-muted);
     font-size: 0.85rem;
@@ -384,17 +391,21 @@ img {
 }
 
 /* ========== NAVIGATION ========== */
+/* The row itself is laid out by the template: templates/single.html gives the
+   group a flex layout and a 1rem blockGap, and core writes the display, gap and
+   align-items out for it. Declaring them here as well left two owners for one
+   decision, and the Site Editor could only change the one it did not win. What
+   is left is the box the row sits in, which is a page-frame decision the
+   editor has no attribute for. */
 .post-navigation {
     max-width: var(--reading-width);
     margin: 0 auto 4rem;
     padding: 0 var(--page-padding);
-    display: flex;
-    gap: 1rem;
 }
 
-/* Scoped to .post-navigation. the_comments_navigation() emits .nav-previous and
-   .nav-next too, inside a .comment-navigation that is not a flex container, so
-   unscoped rules leaked onto it and right-aligned its "Newer comments" link. */
+/* Scoped to .post-navigation, because .nav-previous and .nav-next are class
+   names this theme chose, and the comments pager below is free to grow its own
+   pair later. */
 .post-navigation .nav-previous,
 .post-navigation .nav-next {
     flex: 1;
@@ -407,31 +418,26 @@ img {
     text-align: right;
 }
 
-.comment-navigation {
-    display: flex;
-    gap: 1rem;
-    margin-bottom: 2rem;
+/* core/post-navigation-link emits its wrapper whether or not there is an
+   adjacent post, so the newest post carries an empty .nav-next and the oldest
+   an empty .nav-previous, each holding half the row. On a site with one post
+   both are empty and the <nav> keeps its 4rem bottom margin around nothing.
+   The wrapper is emitted with no whitespace inside it, so :empty matches. */
+.post-navigation .nav-previous:empty,
+.post-navigation .nav-next:empty {
+    display: none;
 }
 
-.comment-navigation .nav-previous,
-.comment-navigation .nav-next {
-    flex: 1;
-    font-size: 0.85rem;
+/* And the <nav> itself once both are. :has() is required for this; without it
+   the row collapses to nothing but keeps its bottom margin, which is a stray
+   4rem gap rather than a broken page. */
+.post-navigation:not(:has(> :not(:empty))) {
+    display: none;
 }
 
-.comment-navigation .nav-next {
-    text-align: right;
-}
-
-.comment-navigation a {
-    color: var(--text-secondary);
-}
-
-.comment-navigation a:hover {
-    color: var(--accent);
-}
-
-.nav-label {
+/* core/post-navigation-link's own label class. This used to be .nav-label,
+   which single.php wrote by hand. */
+.post-navigation-link__label {
     display: block;
     font-size: 0.75rem;
     text-transform: uppercase;
@@ -440,9 +446,38 @@ img {
     margin-bottom: 0.25rem;
 }
 
-.nav-title {
+/* The adjacent post's title, which core renders as a bare anchor where
+   single.php wrapped it in a .nav-title span. */
+.post-navigation a {
     color: var(--text-primary);
     font-size: 0.95rem;
+}
+
+.post-navigation a:hover {
+    color: var(--accent);
+}
+
+/* Same division as .post-navigation above: core/comments-pagination lays its
+   own row out from the template's layout attribute, and what is left here is
+   the space around it. */
+.comment-navigation {
+    margin-bottom: 2rem;
+    font-size: 0.85rem;
+}
+
+/* "Newer comments" holds the right edge whether or not "Older comments" is
+   there to push it, which is what .nav-next's text-align used to do. core names
+   these two after the block now, so there is no .nav-next here to scope. */
+.comment-navigation .wp-block-comments-pagination-next {
+    margin-left: auto;
+}
+
+.comment-navigation a {
+    color: var(--text-secondary);
+}
+
+.comment-navigation a:hover {
+    color: var(--accent);
 }
 
 /* ========== POST TAGS ========== */
@@ -456,6 +491,13 @@ img {
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
+}
+
+/* core/post-terms puts its separator in a span of its own, which in a flex row
+   is a real item taking a real gap, where the_tags(' ')'s bare space was not.
+   The gap above is the separator now. */
+.post-tags .wp-block-post-terms__separator {
+    display: none;
 }
 
 .post-tags a {
@@ -486,6 +528,12 @@ img {
 }
 
 /* ========== PAGINATION ========== */
+/* Left here rather than moved to theme.json: everything below the first rule
+   selects a descendant of core/query-pagination — the numbers, the current one,
+   the previous and next links — and theme.json can only reach those through a
+   raw css string, which would be the same CSS somewhere harder to read.
+   core/query-pagination renders nothing at all when its children are all empty,
+   so there is no empty pager to suppress on a no-results page. */
 .pagination {
     text-align: center;
     padding: 3rem 0;
@@ -513,24 +561,6 @@ img {
     border-color: var(--border-hover);
 }
 
-/* ========== MULTIPAGE POST LINKS ========== */
-/* wp_link_pages() output, kept separate from .pagination so it does not
-   inherit the pager's bordered boxes. */
-.page-links {
-    color: var(--text-muted);
-    font-size: 0.9rem;
-    margin-bottom: 2rem;
-}
-
-.page-links a,
-.page-links > span {
-    margin-left: 0.5rem;
-}
-
-.single-content .page-links a {
-    border-bottom: 0;
-}
-
 /* ========== 404 & NO POSTS ========== */
 .no-posts {
     text-align: center;
@@ -546,9 +576,9 @@ img {
 }
 
 /* ========== ACCESSIBILITY HELPERS ========== */
-/* Required by WordPress: the_posts_pagination() and get_search_form() both
-   emit .screen-reader-text. Without this rule the pager reads
-   "Page 1 Page 2 Page 3" and a stray "Posts navigation" heading appears. */
+/* Required by WordPress: core/search labels its field with one of these, and
+   core's skip link is one too. Without this rule the search form grows a
+   visible "Search for:" label and the skip link sits over the site title. */
 .screen-reader-text {
     border: 0;
     clip-path: inset(50%);
@@ -604,33 +634,24 @@ img {
     margin-top: 0.75rem;
 }
 
-.search-term {
-    color: var(--text-primary);
-}
-
 /* ========== SEARCH FORM ========== */
+/* core/search lays the form out itself — the field and the button share a flex
+   wrapper inside it — so only the width and the placing of the whole thing are
+   left to say here. */
 .search-form {
-    display: flex;
-    gap: 0.5rem;
-    justify-content: center;
     margin: 2rem auto 0;
     max-width: 420px;
 }
 
-.search-field {
-    flex: 1;
-}
-
-.search-field::placeholder {
-    color: var(--text-muted);
-}
-
 /* ========== FORM CONTROLS ========== */
-/* The theme has one text field and one button, shared by the search form above
-   and the comment and password forms below, which add only what differs.
-   Keeping three copies of each is what let them drift apart in the first
-   place. */
-.search-field,
+/* One text field, shared by the search form above and the comment and password
+   forms below, which add only what differs. Keeping three copies of it is what
+   let them drift apart in the first place.
+ *
+ * The search field is reached through .search-form rather than on its own,
+ * because core/search ships a border colour on .wp-block-search__input and a
+ * bare class here would only tie with it. */
+.search-form .wp-block-search__input,
 .comment-form input[type="text"],
 .comment-form input[type="email"],
 .comment-form input[type="url"],
@@ -645,7 +666,7 @@ img {
 
 /* The password field sits inline in a sentence and keeps its own smaller
    metrics, so it takes the look above and not the size here. */
-.search-field,
+.search-form .wp-block-search__input,
 .comment-form input[type="text"],
 .comment-form input[type="email"],
 .comment-form input[type="url"],
@@ -654,23 +675,17 @@ img {
     padding: 0.7rem 1rem;
 }
 
-.search-submit,
-.comment-form .submit {
-    padding: 0.7rem 1.2rem;
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border-hover);
-    border-radius: 4px;
-    color: var(--text-primary);
-    cursor: pointer;
-    font-family: inherit;
-    font-size: 0.9rem;
-    transition: color var(--transition), border-color var(--transition);
+.search-form .wp-block-search__input::placeholder {
+    color: var(--text-muted);
 }
 
-.search-submit:hover,
-.comment-form .submit:hover {
-    color: var(--accent);
-    border-color: var(--accent);
+/* The buttons are theme.json's, under styles.elements.button: core gives the
+   search button and the comment submit the same .wp-element-button class, and
+   that is the one place a rule reaches both and the editor as well. These two
+   declarations are what theme.json has no property for. */
+.wp-element-button {
+    cursor: pointer;
+    transition: color var(--transition), border-color var(--transition);
 }
 
 .no-posts-back {
@@ -771,9 +786,11 @@ img {
     outline-offset: 0;
 }
 
-/* Core's HTML5 comment walker emits <b class="fn"> for the author name. There
-   is no .comment-author-name class anywhere in core. */
-.bypostauthor > .comment-body .fn {
+/* core/comment-template still puts comment_class() on each <li>, so
+   .bypostauthor survives the port; the .comment-body wrapper and the <b
+   class="fn"> inside it do not. The direct child keeps this off a reply nested
+   under one of the author's own comments. */
+.bypostauthor > .comment-meta .wp-block-comment-author-name {
     color: var(--accent);
 }
 
@@ -987,39 +1004,35 @@ img {
     padding: 0 var(--page-padding) 4rem;
 }
 
-.comments-title {
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 0.15em;
-    color: var(--text-muted);
-    font-weight: 400;
-    margin-bottom: 2rem;
-}
+/* .comments-title is theme.json's, under styles.blocks["core/comments-title"]. */
 
-.comment-list {
-    list-style: none;
+/* core/comment-template is the list, and it already zeroes its own padding and
+   markers; only the space under it is left to say. Its nested lists carry no
+   class at all, which is why the indent rule below selects a bare <ol>. */
+.comments-area .wp-block-comment-template {
     margin: 0 0 2.5rem;
-    padding: 0;
 }
 
-.comment-list .children {
+.comments-area .wp-block-comment-template ol {
     list-style: none;
     margin: 1.5rem 0 0;
     padding-left: 1.5rem;
     border-left: 1px solid var(--border);
 }
 
-.comment-body {
+/* The rule between comments. comments.php had a .comment-body wrapper around
+   one comment's own content; the block list has only the <li>, which also
+   holds that comment's replies, so the line now falls under a whole branch of
+   the thread rather than between a comment and its first reply. */
+.comments-area .wp-block-comment-template li {
     border-bottom: 1px solid var(--border);
     padding-bottom: 1.5rem;
     margin-bottom: 1.5rem;
 }
 
+/* The avatar row's flex layout comes from the template, as .post-navigation's
+   does. Only the space under it is left. */
 .comment-meta {
-    align-items: center;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
     margin-bottom: 0.75rem;
 }
 
@@ -1066,16 +1079,6 @@ img {
     margin-bottom: 1.2rem;
 }
 
-/* A shade wider than the search button, which sits in a tighter row. */
-.comment-form .submit {
-    padding: 0.7rem 1.4rem;
-}
-
-.no-comments {
-    color: var(--text-muted);
-    font-size: 0.9rem;
-}
-
 /* ========== REDUCED MOTION ========== */
 @media (prefers-reduced-motion: reduce) {
     *,
@@ -1094,7 +1097,11 @@ img {
 
 /* ========== RESPONSIVE ========== */
 @media (max-width: 768px) {
-    .site-title {
+    /* The two title rules are qualified by the group that holds each of them,
+       which is not decoration: their base sizes are in theme.json now, and a
+       bare .site-title would only tie with .wp-block-site-title and win on
+       source order alone. */
+    .site-header .site-title {
         font-size: 1.8rem;
     }
 
@@ -1137,12 +1144,14 @@ img {
     .photo-grid {
         /* No column-width override here. This used to cap the minmax() floor at
            250px so a second column would hold down to 564px, which made sense
-           when the width was hardcoded at 300. Once it became a setting the cap
-           was overriding the setting: at 523px, a phone asking for 450px
-           columns got two 254px ones instead of a single 523px one, and going
-           full bleed made that worse by handing the grid the width it needed to
-           fit the extra column. The base rule governs at every width now, so
-           the number in the Customizer means the same thing everywhere. */
+           when the width was hardcoded at 300. The cap then started overriding
+           --photo-grid-min: at 523px, a grid asking for 450px columns got two
+           254px ones instead of a single 523px one, and going full bleed made
+           that worse by handing the grid the width it needed to fit the extra
+           column. The base rule governs at every width now, so
+           LUMEN_GRID_MIN_WIDTH_DEFAULT means the same thing everywhere — which
+           is also what lumen_get_grid_bands() assumes when it works out the
+           sizes attribute. */
         gap: 1rem;
     }
 
@@ -1156,7 +1165,7 @@ img {
         margin-left: 0;
     }
 
-    .single-title {
+    .single-header .single-title {
         font-size: 1.5rem;
     }
 }

@@ -12,19 +12,18 @@ if (!defined('ABSPATH')) {
 /**
  * Photo grid column width, in pixels.
  *
- * The Customizer setting is the grid's minimum column width, not a column
- * count. The grid fits as many columns of at least this width as the container
- * holds and then stretches them to fill it, so a larger value means fewer and
- * bigger photos, and the count still falls on its own as the viewport narrows.
+ * This is the grid's minimum column width, not a column count. The grid fits as
+ * many columns of at least this width as the container holds and then stretches
+ * them to fill it, so a larger value means fewer and bigger photos, and the
+ * count still falls on its own as the viewport narrows.
  *
- * 600 is the ceiling because two 600px columns plus the 24px gap need 1224px
- * and .site-main tops out at a 1352px content box. Anything above roughly 650
- * would leave a single column stretched across the full width at every
- * viewport, which is a different layout rather than a denser one.
+ * It used to be a Customizer setting with a 200-600 range, clamped on read.
+ * The Customizer went with the classic theme, so there is one value now and
+ * nothing to sanitise. Much above 650 the grid is a single column stretched
+ * across the full width at every viewport, which is a different layout rather
+ * than a denser one, which is why the range it used to offer stopped at 600.
  */
 const LUMEN_GRID_MIN_WIDTH_DEFAULT = 450;
-const LUMEN_GRID_MIN_WIDTH_LOWER   = 200;
-const LUMEN_GRID_MIN_WIDTH_UPPER   = 600;
 
 /**
  * The page frame, mirroring style.css.
@@ -58,6 +57,10 @@ const LUMEN_GRID_ONE_COL_BP   = 480;  // At and below this the grid is forced to
 // What .site-main leaves for the grid once it has paid its own padding.
 const LUMEN_GRID_MAX_CONTENT  = LUMEN_SITE_MAX_WIDTH - LUMEN_GRID_PAGE_PADDING;
 
+// Still required at runtime even though no colour is derived per request any
+// more: LUMEN_OVERLAY_ALPHA lives here, lumen_scripts() emits it, and the tone
+// the overlay's date is contrast-checked against is worked out from the same
+// constant. bin/generate-variation.php and tests/ load this file themselves.
 require_once get_template_directory() . '/inc/palette.php';
 
 /**
@@ -128,24 +131,22 @@ function lumen_setup() {
 
     add_theme_support('responsive-embeds');
 
-    // Block editor: wide and full alignments, previewed with a dedicated
-    // stylesheet. style.css is not used here: its universal reset and
-    // overflow-x:hidden on body would break the editing surface.
+    // Wide and full alignments. theme.json's layout.wideSize already implies
+    // this on a block theme; it is declared anyway so the support does not
+    // depend on which of the two WordPress consults.
     //
-    // Both supports are required. add_editor_style() declares 'editor-style'
-    // (singular), which is the classic TinyMCE feature; the block editor loads
-    // theme styles only when 'editor-styles' (plural) is declared. Without the
-    // plural one the stylesheet below is never loaded and this whole block is
-    // inert. dark-editor-style tells the editor its canvas is dark so it
-    // adjusts its own UI accordingly.
+    // There is no editor stylesheet any more. editor-style.css existed because
+    // style.css cannot safely be loaded onto the editing surface — its
+    // universal reset and its overflow-x:hidden on body would break it — and
+    // the palette still had to reach the canvas. theme.json carries the palette
+    // now, and the block styling with it. What no longer previews in the editor
+    // is the post-content typography .single-content applies on the front end.
+    //
+    // register_nav_menus() went at the same time. A block theme has no Menus
+    // screen for a registered location to appear on, and core/navigation finds
+    // an existing classic menu through the nav_menu_locations theme mod, which
+    // is stored whether or not the location is registered.
     add_theme_support('align-wide');
-    add_theme_support('editor-styles');
-    add_theme_support('dark-editor-style');
-    add_editor_style('editor-style.css');
-
-    register_nav_menus(array(
-        'primary' => __('Primary Menu', 'lumen'),
-    ));
 }
 add_action('after_setup_theme', 'lumen_setup');
 
@@ -223,21 +224,22 @@ function lumen_scripts() {
         wp_get_theme()->get('Version')
     );
 
-    // Everything PHP owns that the stylesheet needs, as custom property
-    // overrides. style.css carries the same values as var() fallbacks, so the
-    // page still renders if this block never arrives, but these are the
-    // authoritative copies and the ones the sizes attribute is computed from.
+    // The four measurements PHP owns and the stylesheet needs. style.css
+    // carries the same values, so the page still renders if this block never
+    // arrives, but these are the authoritative copies and the ones the sizes
+    // attribute is computed from.
     //
-    // The whole colour palette is derived rather than only the accent, because
-    // every tone in it is relative to the background the visitor picked.
-    $properties = array_merge(
-        array(
-            '--photo-grid-min' => lumen_get_grid_min_width() . 'px',
-            '--site-max-width' => LUMEN_SITE_MAX_WIDTH . 'px',
-            '--reading-width'  => LUMEN_CONTENT_WIDTH . 'px',
-            '--overlay-alpha'  => LUMEN_OVERLAY_ALPHA,
-        ),
-        lumen_palette()
+    // No colours. lumen_palette() used to be merged in here, which put the dark
+    // palette on every response, after the global stylesheet and at the same
+    // specificity — so selecting the Light variation in the Site Editor changed
+    // nothing. Colour comes from theme.json and from whichever variation under
+    // styles/ is selected; lumen_palette() is what generates those, offline,
+    // through bin/generate-variation.php.
+    $properties = array(
+        '--photo-grid-min' => lumen_get_grid_min_width() . 'px',
+        '--site-max-width' => LUMEN_SITE_MAX_WIDTH . 'px',
+        '--reading-width'  => LUMEN_CONTENT_WIDTH . 'px',
+        '--overlay-alpha'  => LUMEN_OVERLAY_ALPHA,
     );
 
     $declarations = '';
@@ -256,82 +258,23 @@ function lumen_scripts() {
 add_action('wp_enqueue_scripts', 'lumen_scripts');
 
 /**
- * Customizer: Add theme options
- */
-function lumen_customize_register($wp_customize) {
-    $wp_customize->add_setting('lumen_accent_color', array(
-        'default'           => '#ffffff',
-        'sanitize_callback' => 'sanitize_hex_color',
-        'transport'         => 'refresh',
-    ));
-
-    $wp_customize->add_control(new WP_Customize_Color_Control($wp_customize, 'lumen_accent_color', array(
-        'label'       => __('Accent Color', 'lumen'),
-        'description' => __('Used for the site title, link hovers and focus outlines. Dark colours are lightened automatically so they stay readable on the dark background.', 'lumen'),
-        'section'     => 'colors',
-    )));
-
-    $wp_customize->add_setting('lumen_background_color', array(
-        'default'           => LUMEN_BG_DEFAULT,
-        'sanitize_callback' => 'sanitize_hex_color',
-        'transport'         => 'refresh',
-    ));
-
-    $wp_customize->add_control(new WP_Customize_Color_Control($wp_customize, 'lumen_background_color', array(
-        'label'       => __('Background Color', 'lumen'),
-        'description' => __('The page background. Every other colour in the theme is worked out from it, so a light background gives dark text, borders and panels to match, all held to WCAG AA. The overlay on a photo stays dark either way, because it sits on the photo rather than on the page.', 'lumen'),
-        'section'     => 'colors',
-        'priority'    => 5,
-    )));
-
-    $wp_customize->add_section('lumen_photo_grid', array(
-        'title'    => __('Photo Grid', 'lumen'),
-        'priority' => 40,
-    ));
-
-    $wp_customize->add_setting('lumen_grid_min_width', array(
-        'default'           => LUMEN_GRID_MIN_WIDTH_DEFAULT,
-        'sanitize_callback' => 'lumen_sanitize_grid_min_width',
-        'transport'         => 'refresh',
-    ));
-
-    $wp_customize->add_control('lumen_grid_min_width', array(
-        'label'       => __('Column width', 'lumen'),
-        'description' => __('The narrowest a photo column may be, in pixels. The grid fits as many columns as will fit and stretches them to fill the row, so a larger number means fewer, bigger photos. 300 gives four across on a wide screen, 350 gives three and 450 gives two.', 'lumen'),
-        'section'     => 'lumen_photo_grid',
-        'type'        => 'number',
-        'input_attrs' => array(
-            'min'  => LUMEN_GRID_MIN_WIDTH_LOWER,
-            'max'  => LUMEN_GRID_MIN_WIDTH_UPPER,
-            'step' => 10,
-        ),
-    ));
-}
-
-/**
- * Clamp a photo grid column width to the range the layout and crops support.
+ * The photo grid column width, in pixels.
  *
- * Used as the setting's sanitize_callback, and again on read, because a value
- * stored before the bounds moved would otherwise escape them.
+ * Kept as a function rather than folded into its two callers, because the sizes
+ * attribute and --photo-grid-min have to agree on it and a single reader is how
+ * that stays true.
  *
- * @param mixed $value Raw setting value.
- * @return int Column width in pixels.
- */
-function lumen_sanitize_grid_min_width($value) {
-    return min(LUMEN_GRID_MIN_WIDTH_UPPER, max(LUMEN_GRID_MIN_WIDTH_LOWER, (int) $value));
-}
-
-/**
- * The configured photo grid column width, in pixels.
+ * The three theme mods this and lumen_palette() used to read are deliberately
+ * left in the database. Nothing on the request path reads theme_mods_lumen any
+ * more — lumen_palette() still would, but only bin/generate-variation.php calls
+ * it, against its own stubs — so switching back to classic Lumen finds its
+ * Customizer settings exactly where it left them.
  *
  * @return int
  */
 function lumen_get_grid_min_width() {
-    return lumen_sanitize_grid_min_width(
-        get_theme_mod('lumen_grid_min_width', LUMEN_GRID_MIN_WIDTH_DEFAULT)
-    );
+    return LUMEN_GRID_MIN_WIDTH_DEFAULT;
 }
-add_action('customize_register', 'lumen_customize_register');
 
 /**
  * Display title for a post, falling back to "Untitled" when there is none.
