@@ -1020,14 +1020,26 @@ nav.site-nav {
     border-left: 1px solid var(--border);
 }
 
-/* The rule between comments. comments.php had a .comment-body wrapper around
-   one comment's own content; the block list has only the <li>, which also
-   holds that comment's replies, so the line now falls under a whole branch of
-   the thread rather than between a comment and its first reply. */
+/* The rule between comments. comments.php had a .comment-body wrapper holding
+   one comment's own content, and the block list has only the <li>, which also
+   holds that comment's replies — so this line falls under a whole branch of the
+   thread where it used to fall between a comment and its first reply. */
 .comments-area .wp-block-comment-template li {
     border-bottom: 1px solid var(--border);
     padding-bottom: 1.5rem;
     margin-bottom: 1.5rem;
+}
+
+/* Except at the foot of a branch, where two of them stack. A reply's <ol> is the
+   last thing inside its parent's <li>, so the last reply draws a line and the
+   parent draws another a few pixels below it — one indented into the thread, one
+   spanning the column. The parent's is the one that means "end of this comment",
+   so the last reply gives up hers, and her spacing with it: what separates the
+   two lines is then the parent's own padding, once. */
+.comments-area .wp-block-comment-template ol > li:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+    margin-bottom: 0;
 }
 
 /* The avatar row's flex layout comes from the template, as .post-navigation's

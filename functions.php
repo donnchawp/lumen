@@ -267,8 +267,16 @@ add_action('wp_enqueue_scripts', 'lumen_scripts');
  * The three theme mods this and lumen_palette() used to read are deliberately
  * left in the database. Nothing on the request path reads theme_mods_lumen any
  * more — lumen_palette() still would, but only bin/generate-variation.php calls
- * it, against its own stubs — so switching back to classic Lumen finds its
- * Customizer settings exactly where it left them.
+ * it, against its own stubs — so lumen_background_color, lumen_accent_color and
+ * lumen_grid_min_width all survive a switch back to classic Lumen intact.
+ *
+ * nav_menu_locations, in that same option, does not, and the cause is dropping
+ * register_nav_menus(): switch_theme() stashes the locations, then
+ * wp_map_nav_menu_locations() intersects them against get_registered_nav_menus(),
+ * which is now empty, and _wp_menus_changed() writes the empty result back. So
+ * leaving this theme and returning to it loses the menu assignment that both
+ * classic Lumen and core/navigation's classic-menu import read. Do the import in
+ * the Site Editor before switching themes for any reason.
  *
  * @return int
  */
