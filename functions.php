@@ -148,8 +148,11 @@ function lumen_setup() {
     // slug is "primary", then the most recently created menu. Only the first
     // depends on a registered location, so an unregistered theme still finds
     // the existing menu and offers it for import. Dropping the registration is
-    // not free — see lumen_get_grid_min_width() for what it costs on a theme
-    // switch — but it does not cost the import.
+    // not free: on a theme switch, wp_map_nav_menu_locations() intersects the
+    // stored locations against an empty registry and writes the empty result
+    // back, discarding the primary assignment. readme.txt's "Upgrading from
+    // Lumen 1.x" carries what that means operationally. It does not cost the
+    // import.
     add_theme_support('align-wide');
 }
 add_action('after_setup_theme', 'lumen_setup');
