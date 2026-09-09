@@ -63,8 +63,5 @@
                 }
             ]
         }
-    },
-    "styles": {
-        "css": ":root{--bg-primary:#ffffff;--bg-secondary:#f8f8f8;--bg-tertiary:#eeeeee;--border:#eeeeee;--border-hover:#d4d4d4;--text-primary:#212121;--text-secondary:#676767;--text-muted:#727272;--accent:#666666;--accent-overlay:#ffffff;--text-overlay:#888888;}"
     }
 }

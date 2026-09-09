@@ -81,11 +81,18 @@ function lumen_assert_variation_contrast(array $palette) {
 /**
  * Build one style variation.
  *
- * The variation carries the palette twice, deliberately. settings.color.palette
- * is what the editor's colour pickers read; styles.css is what style.css reads,
- * because the grid and card rules are written against --bg-primary rather than
- * --wp--preset--color--bg-primary and rewriting 450 lines to gain nothing would
- * be a poor trade.
+ * A variation is its palette and nothing else. settings.color.palette is what
+ * the editor's colour pickers read, and WordPress emits one
+ * --wp--preset--color--<slug> from each entry; theme.json aliases those onto the
+ * --bg-primary names style.css is written against, once, so a variation has no
+ * second copy of its own colours to keep in step.
+ *
+ * The earlier version of this function wrote a styles.css block as well, on the
+ * grounds that rewriting 450 lines of style.css to say
+ * --wp--preset--color--bg-primary would gain nothing. That was true, and it was
+ * the wrong pair to choose between: aliasing in one place costs eleven lines and
+ * means a colour edited in the Site Editor actually paints, which the duplicated
+ * block prevented — the theme's own styles.css always won.
  *
  * @param string $title      Variation name shown in Browse styles.
  * @param string $background Hex colour.
@@ -98,12 +105,9 @@ function lumen_build_variation($title, $background, $accent) {
         'lumen_accent_color'     => $accent,
     );
 
-    $palette = lumen_palette();
+    $presets = array();
 
-    $presets      = array();
-    $declarations = '';
-
-    foreach ($palette as $property => $hex) {
+    foreach (lumen_palette() as $property => $hex) {
         $slug = ltrim($property, '-');
 
         $presets[] = array(
@@ -111,8 +115,6 @@ function lumen_build_variation($title, $background, $accent) {
             'name'  => isset(LUMEN_PALETTE_LABELS[$property]) ? LUMEN_PALETTE_LABELS[$property] : $slug,
             'color' => $hex,
         );
-
-        $declarations .= $property . ':' . $hex . ';';
     }
 
     return array(
@@ -124,9 +126,6 @@ function lumen_build_variation($title, $background, $accent) {
             'color' => array(
                 'palette' => $presets,
             ),
-        ),
-        'styles'   => array(
-            'css' => ':root{' . $declarations . '}',
         ),
     );
 }
