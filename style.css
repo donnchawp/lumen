@@ -69,9 +69,12 @@ Tags: blog, photography, one-column, grid-layout, custom-colors, custom-menu, fe
        two cannot drift. */
     --overlay-alpha: 0.9;
 
-    /* The page frame. lumen_scripts() overrides --site-max-width and
-       --reading-width from LUMEN_SITE_MAX_WIDTH and LUMEN_CONTENT_WIDTH, so the
-       values here are what renders if that inline block never arrives.
+    /* The page frame. theme.json owns these two: settings.layout.wideSize and
+       contentSize, which the reader can change under Styles > Layout.
+       lumen_scripts() reads them back and overrides --site-max-width and
+       --reading-width from what it finds, so the values here are what renders if
+       that inline block never arrives. tests/test-layout.php asserts they still
+       say what theme.json says.
 
        --page-padding is the exception and stays owned here, because it is a rem
        value and pinning it to pixels in PHP would break at a larger default
