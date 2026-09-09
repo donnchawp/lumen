@@ -3,7 +3,7 @@ Contributors: donncha
 Requires at least: 6.6
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 2.0.0
+Stable tag: 2.1.0
 License: GNU General Public License v2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -86,6 +86,13 @@ Lumen is distributed under the terms of the GNU GPL version 2 or later.
 This theme bundles no third-party assets, fonts, images, or libraries. It uses the system font stack via CSS. The only JavaScript it ships is blocks/photo-grid/editor.js, which registers one block with the block editor and never loads on the site itself.
 
 == Changelog ==
+
+= 2.1.0 =
+* Colours picked in the Site Editor now paint. theme.json declared the palette twice, once as presets and once as a block of custom properties holding the same eleven values, and style.css read the second of those, so editing a colour under Styles > Colors changed a variable nothing on the page used. theme.json now aliases each preset onto the property the stylesheet reads, and that alias is the only place the two meet.
+* A style variation carries its palette and nothing else. bin/generate-variation.php no longer writes a styles.css block, so a variation is one list of colours instead of the same list twice. Regenerate with the commands at the top of that file if you keep variations of your own.
+* Six more core blocks take their styling from theme.json rather than style.css: the site tagline, the archive and search titles, the term description, the post navigation links, the comments pager and the comment date. All six are editable under Styles > Blocks now, and the class names they were pinned to are gone from the templates.
+* The page frame comes from theme.json. settings.layout contentSize and wideSize are read back at render time with any change of yours included, so widening the site under Styles > Layout moves the reading column, the grid, and the sizes attribute the browser picks a photo from. Before this the sizes attribute described the width the theme shipped with whatever the setting said, and the browser chose from the wrong candidates on every card with nothing on screen to show it.
+* The registered image sizes deliberately do not follow that setting. A size is baked into a file on disk when an image is uploaded, so tying it to a value you can edit would leave every derivative already generated at the wrong width, with only a full media regenerate to put it right.
 
 = 2.0.0 =
 * Lumen is a block theme. The six PHP templates, the header, the footer, comments.php and searchform.php are replaced by templates/*.html and parts/*.html, built out of core blocks, and every one of them is now editable under Appearance > Editor. Requires at least is 6.6, up from 6.0, which is what block themes of this shape need.

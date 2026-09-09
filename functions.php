@@ -26,18 +26,26 @@ if (!defined('ABSPATH')) {
 const LUMEN_GRID_MIN_WIDTH_DEFAULT = 450;
 
 /**
- * The page frame, mirroring style.css.
+ * The page frame.
  *
- * lumen_get_grid_bands() works out where the grid changes column count so the
- * sizes attribute can describe it. That calculation is only as true as these
- * numbers are, so changing the frame in style.css means changing these to
- * match.
+ * theme.json owns the two widths. settings.layout.contentSize and wideSize are
+ * what the block editor lays wide and full alignments out against, and a reader
+ * can change either under Styles > Layout, so anything that describes the
+ * rendered page has to ask rather than assume: lumen_get_layout_width() reads
+ * them back through wp_get_global_settings(), user override included.
  *
- * Most of it is not mirrored at all any more. LUMEN_SITE_MAX_WIDTH and
- * LUMEN_CONTENT_WIDTH are emitted as --site-max-width and --reading-width by
- * lumen_scripts(), so style.css consumes them rather than repeating them, and
- * the widths that used to be written out at a dozen selectors are now derived
- * from those two.
+ * The two constants below are what that function falls back to when there is no
+ * resolved theme.json to read — and they are the values theme.json states, which
+ * tests/test-layout.php asserts rather than trusts.
+ *
+ * LUMEN_SITE_MAX_WIDTH has a second job that is not a fallback, and the
+ * distinction matters. add_image_size() is registered from it, and a registered
+ * size is baked onto disk at upload time: derive it from a value the reader can
+ * edit and changing wideSize silently orphans every derivative already
+ * generated, with only a full media regenerate to put it right. Sizes stay
+ * pinned to the constant. What follows the setting is the layout description —
+ * the custom properties and the sizes attribute — which is recomputed per
+ * request anyway.
  *
  * What genuinely has to agree is the padding and the two breakpoints.
  * --page-padding stays in style.css because it is a rem value, and turning it
@@ -46,16 +54,13 @@ const LUMEN_GRID_MIN_WIDTH_DEFAULT = 450;
  * which is the assumption the band maths already rests on. A media query cannot
  * read a custom property at all, so the breakpoints stay written out in both.
  */
-const LUMEN_SITE_MAX_WIDTH    = 1400; // --site-max-width.
-const LUMEN_CONTENT_WIDTH     = 700;  // --reading-width.
+const LUMEN_SITE_MAX_WIDTH    = 1400; // theme.json settings.layout.wideSize.
+const LUMEN_CONTENT_WIDTH     = 700;  // theme.json settings.layout.contentSize.
 const LUMEN_GRID_PAGE_PADDING = 48;   // 2 x --page-padding.
 const LUMEN_GRID_GAP          = 24;   // 1.5rem, above 768px.
 const LUMEN_GRID_GAP_NARROW   = 16;   // 1rem, at 768px and below.
 const LUMEN_GRID_NARROW_BP    = 768;  // At and below this the grid runs full bleed.
 const LUMEN_GRID_ONE_COL_BP   = 480;  // At and below this the grid is forced to one column.
-
-// What .site-main leaves for the grid once it has paid its own padding.
-const LUMEN_GRID_MAX_CONTENT  = LUMEN_SITE_MAX_WIDTH - LUMEN_GRID_PAGE_PADDING;
 
 // Still required at runtime even though no colour is derived per request any
 // more: LUMEN_OVERLAY_ALPHA lives here, lumen_scripts() emits it, and the tone
@@ -92,6 +97,12 @@ function lumen_setup() {
     // Embeds render in the column rather than at the wider image breakout, so
     // this stays at the column width. Set here rather than at file scope so a
     // child theme can override it on the same hook.
+    //
+    // The constant again, for the hook's sake: core wants $content_width settled
+    // by the end of after_setup_theme, and reading theme.json this early would
+    // cache it before plugins have filtered it. An oEmbed asked for at 700px and
+    // rendered in a column the reader has since widened is a smaller iframe than
+    // it could be, which is the mildest of the failures available here.
     if (!isset($content_width)) {
         $content_width = LUMEN_CONTENT_WIDTH;
     }
@@ -115,6 +126,12 @@ function lumen_setup() {
     // still binds on height, so a tall portrait is generated narrower than the
     // slot it lands in. Widening it means regenerating every attachment, so it
     // is left alone here rather than changed in passing.
+    //
+    // The constant, deliberately, and not lumen_get_layout_width(): this runs on
+    // after_setup_theme, which is too early to resolve theme.json, and a
+    // registered size must not follow a value the reader can edit — the width is
+    // baked into a file on disk at upload time, so changing wideSize would leave
+    // every existing derivative the wrong size with nothing to say so.
     add_image_size('lumen-single', LUMEN_SITE_MAX_WIDTH, 900, false);
 
     add_theme_support('title-tag');
@@ -275,8 +292,8 @@ function lumen_scripts() {
     // through bin/generate-variation.php.
     $properties = array(
         '--photo-grid-min' => lumen_get_grid_min_width() . 'px',
-        '--site-max-width' => LUMEN_SITE_MAX_WIDTH . 'px',
-        '--reading-width'  => LUMEN_CONTENT_WIDTH . 'px',
+        '--site-max-width' => lumen_get_layout_width('wideSize', LUMEN_SITE_MAX_WIDTH) . 'px',
+        '--reading-width'  => lumen_get_layout_width('contentSize', LUMEN_CONTENT_WIDTH) . 'px',
         '--overlay-alpha'  => LUMEN_OVERLAY_ALPHA,
     );
 
@@ -320,6 +337,59 @@ add_action('wp_enqueue_scripts', 'lumen_scripts');
  */
 function lumen_get_grid_min_width() {
     return LUMEN_GRID_MIN_WIDTH_DEFAULT;
+}
+
+/**
+ * One of theme.json's two layout widths, in pixels.
+ *
+ * wp_get_global_settings() returns the merged value, so a width the reader has
+ * changed under Styles > Layout comes back changed. That is the whole point of
+ * reading it: the sizes attribute and --site-max-width describe where the photos
+ * actually land, and a constant describes where they landed when the theme was
+ * written.
+ *
+ * Only a plain pixel value is accepted. theme.json allows any CSS length, and a
+ * clamp() or a rem value is a perfectly legal answer that the band maths — which
+ * is integer pixel arithmetic against pixel breakpoints — has no way to use. In
+ * that case the constant is the honest reply: the grid keeps describing a layout
+ * it understands rather than one it guessed at.
+ *
+ * Do not call this before init. It resolves theme.json, and doing that on
+ * after_setup_theme caches the result before plugins have filtered it.
+ *
+ * @param string $key      'contentSize' or 'wideSize'.
+ * @param int    $fallback Pixels to use when theme.json cannot answer.
+ * @return int
+ */
+function lumen_get_layout_width($key, $fallback) {
+    static $cache = array();
+
+    if (isset($cache[$key])) {
+        return $cache[$key];
+    }
+
+    $width = $fallback;
+
+    if (function_exists('wp_get_global_settings')) {
+        $layout = wp_get_global_settings(array('layout'));
+
+        if (isset($layout[$key]) && preg_match('/^\s*(\d+(?:\.\d+)?)\s*px\s*$/', $layout[$key], $matches)) {
+            $width = (int) round((float) $matches[1]);
+        }
+    }
+
+    $cache[$key] = $width;
+
+    return $width;
+}
+
+/**
+ * What .site-main leaves for the grid once it has paid its own padding.
+ *
+ * @return int
+ */
+function lumen_get_grid_max_content() {
+    return lumen_get_layout_width('wideSize', LUMEN_SITE_MAX_WIDTH) - LUMEN_GRID_PAGE_PADDING;
 }
 
 /**
@@ -649,10 +719,16 @@ function lumen_get_grid_image_size($post = null) {
 function lumen_get_grid_bands() {
     static $cache = array();
 
-    $min_width = lumen_get_grid_min_width();
+    $min_width   = lumen_get_grid_min_width();
+    $max_content = lumen_get_grid_max_content();
 
-    if (isset($cache[$min_width])) {
-        return $cache[$min_width];
+    // Keyed on both, because the bands are a function of both: the frame decides
+    // where .site-main stops growing and the column width decides how often a
+    // new column fits inside it.
+    $key = $min_width . ':' . $max_content;
+
+    if (isset($cache[$key])) {
+        return $cache[$key];
     }
 
     // style.css forces one column at 480px and below whatever the setting is,
@@ -684,13 +760,13 @@ function lumen_get_grid_bands() {
         list($from_vw, $to_vw, $gap, $pad) = $regime;
 
         for ($vw = $from_vw; ; ) {
-            $content = min($vw - $pad, LUMEN_GRID_MAX_CONTENT);
+            $content = min($vw - $pad, $max_content);
             $columns = max(1, (int) floor(($content + $gap) / ($min_width + $gap)));
 
             // Where one more column first fits. Null once .site-main has stopped
             // growing, because the count can no longer change after that.
             $next_content = ($columns + 1) * $min_width + $columns * $gap;
-            $max_vw       = $next_content > LUMEN_GRID_MAX_CONTENT
+            $max_vw       = $next_content > $max_content
                 ? null
                 : $next_content + $pad - 1;
 
@@ -699,8 +775,8 @@ function lumen_get_grid_bands() {
             }
 
             $top_content = null === $max_vw
-                ? LUMEN_GRID_MAX_CONTENT
-                : min($max_vw - $pad, LUMEN_GRID_MAX_CONTENT);
+                ? $max_content
+                : min($max_vw - $pad, $max_content);
 
             $bands[] = array(
                 'min_vw'  => $vw,
@@ -719,7 +795,7 @@ function lumen_get_grid_bands() {
         }
     }
 
-    $cache[$min_width] = $bands;
+    $cache[$key] = $bands;
 
     return $bands;
 }

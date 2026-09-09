@@ -33,19 +33,17 @@ $variation = lumen_build_variation('Dark', '#0a0a0a', '#ffffff');
 lumen_assert_same(3, $variation['version'], 'variation is theme.json v3');
 lumen_assert_same('Dark', $variation['title'], 'variation title');
 
-// The editor reads settings.color.palette to draw its pickers; style.css reads
-// the raw custom properties. A variation has to carry both or the two disagree.
+// The editor reads settings.color.palette to draw its pickers, and WordPress
+// emits one --wp--preset--color--<slug> per entry. That is the whole variation:
+// theme.json aliases those onto the --bg-primary names style.css is written
+// against, so a variation carrying colours of its own would be a second copy.
 $slugs = array_column($variation['settings']['color']['palette'], 'slug');
 lumen_assert_true(in_array('bg-primary', $slugs, true), 'palette exposes bg-primary');
 lumen_assert_true(in_array('text-primary', $slugs, true), 'palette exposes text-primary');
 
 lumen_assert_true(
-    strpos($variation['styles']['css'], '--bg-primary:#0a0a0a') !== false,
-    'variation css carries --bg-primary'
-);
-lumen_assert_true(
-    strpos($variation['styles']['css'], '--text-muted:#7c7c7c') !== false,
-    'variation css carries --text-muted'
+    !isset($variation['styles']),
+    'a variation carries no styles of its own'
 );
 
 // A generated palette nobody re-checks is worse than a runtime one that checks
@@ -75,26 +73,31 @@ foreach (array('dark' => '#0a0a0a', 'light' => '#ffffff') as $name => $backgroun
     lumen_assert_same($fresh, $onDisk, $name . '.json matches the generator');
 }
 
-// theme.json's base styles must carry the same custom properties as the dark
-// variation. Without them the editor canvas has no palette at all once
-// editor-style.css is deleted, and theme.json's own var(--accent) link colour
-// resolves to nothing. Compared as strings because both come from the same
-// generator output — any divergence means one was hand-edited.
 $lumen_theme_json = json_decode(file_get_contents(dirname(__DIR__) . '/theme.json'), true);
 $lumen_dark       = json_decode(file_get_contents(dirname(__DIR__) . '/styles/dark.json'), true);
 
-lumen_assert_same(
-    $lumen_dark['styles']['css'],
-    $lumen_theme_json['styles']['css'],
-    'theme.json base palette matches styles/dark.json'
-);
+// Every preset must be aliased onto the custom property style.css reads, or
+// that tone silently resolves to nothing the moment a variation is picked. This
+// is the join between the two halves of the palette: settings.color.palette is
+// the only place a colour is written down, and this block is the only thing
+// carrying it to the 450 lines that consume it. A slug added to the generator
+// without a line here would paint as an invalid value, which is the failure
+// this catches.
+foreach (array_column($lumen_theme_json['settings']['color']['palette'], 'slug') as $lumen_slug) {
+    lumen_assert_true(
+        strpos(
+            $lumen_theme_json['styles']['css'],
+            '--' . $lumen_slug . ':var(--wp--preset--color--' . $lumen_slug . ')'
+        ) !== false,
+        'theme.json aliases --' . $lumen_slug
+    );
+}
 
-// And the same for the presets. settings.color sets defaultPalette and custom
-// both to false, so without a palette of its own theme.json leaves the editor's
-// colour UI completely empty until the reader opens Browse styles and picks a
-// variation — which is not a state anyone would choose deliberately. Copied
-// from styles/dark.json rather than typed, the way styles.css above is, so this
-// assertion is the only thing keeping the two in step.
+// settings.color sets defaultPalette and custom both to false, so without a
+// palette of its own theme.json leaves the editor's colour UI completely empty
+// until the reader opens Browse styles and picks a variation — which is not a
+// state anyone would choose deliberately. Copied from styles/dark.json rather
+// than typed, so this assertion is the only thing keeping the two in step.
 lumen_assert_same(
     $lumen_dark['settings']['color']['palette'],
     $lumen_theme_json['settings']['color']['palette'],

@@ -3,7 +3,7 @@ Theme Name: Lumen
 Author: Donncha O Caoimh
 Author URI: https://odd.blog/
 Description: A dark, gallery-first photography theme for photoblogs. Features a responsive CSS Grid layout, featured image hover overlays, and a dedicated section for text-only posts at the bottom of archive pages.
-Version: 2.0.0
+Version: 2.1.0
 Requires at least: 6.6
 Tested up to: 7.1
 Requires PHP: 7.4
@@ -22,18 +22,23 @@ Tags: blog, photography, one-column, grid-layout, custom-colors, custom-menu, fe
 
 /* The palette, and the last word on it belongs to somebody else.
  *
- * theme.json carries these same eleven properties, and each style variation
- * under styles/ carries its own set. WordPress prints all of that as the
- * global stylesheet, which comes before this file in the document, so a plain
- * :root here would outrank the variation the reader had selected and pin the
- * site to the dark palette for ever. :where() drops this block to zero
- * specificity, which turns it into what it is meant to be: what paints if no
- * global stylesheet arrives at all.
+ * Colours are declared once, as presets in theme.json's settings.color.palette,
+ * and a style variation replaces that list wholesale. WordPress emits one
+ * --wp--preset--color--<slug> per entry; theme.json's styles.css aliases each of
+ * those onto the short name the rules below are written against. That alias is
+ * the only reason a colour edited in the Site Editor actually paints — while
+ * this file and theme.json each declared their own hex, the theme's copy won
+ * every time and the editor's palette was decoration.
  *
- * Keep the values in step with theme.json's styles.css and with styles/dark.json,
- * which bin/generate-variation.php writes from lumen_palette(). tests/test-palette.php
- * reads this block and fails if they drift, so "keep in step" is enforced rather
- * than asked for. */
+ * WordPress prints all of that as the global stylesheet, which comes before this
+ * file in the document, so a plain :root here would outrank the variation the
+ * reader had selected and pin the site to the dark palette for ever. :where()
+ * drops this block to zero specificity, which turns it into what it is meant to
+ * be: what paints if no global stylesheet arrives at all.
+ *
+ * So this block is a fallback, not a copy with a peer to drift from — but it is
+ * still eleven hex values that have to mean what lumen_palette() means.
+ * tests/test-palette.php reads it and fails if they diverge. */
 :where(:root) {
     --bg-primary: #0a0a0a;
     --bg-secondary: #111111;
@@ -64,9 +69,12 @@ Tags: blog, photography, one-column, grid-layout, custom-colors, custom-menu, fe
        two cannot drift. */
     --overlay-alpha: 0.9;
 
-    /* The page frame. lumen_scripts() overrides --site-max-width and
-       --reading-width from LUMEN_SITE_MAX_WIDTH and LUMEN_CONTENT_WIDTH, so the
-       values here are what renders if that inline block never arrives.
+    /* The page frame. theme.json owns these two: settings.layout.wideSize and
+       contentSize, which the reader can change under Styles > Layout.
+       lumen_scripts() reads them back and overrides --site-max-width and
+       --reading-width from what it finds, so the values here are what renders if
+       that inline block never arrives. tests/test-layout.php asserts they still
+       say what theme.json says.
 
        --page-padding is the exception and stays owned here, because it is a rem
        value and pinning it to pixels in PHP would break at a larger default
@@ -126,19 +134,12 @@ img {
     border-bottom: 1px solid var(--border);
 }
 
-/* .site-title's own rules, and the navigation's type and resting colour, are in
-   theme.json now under styles.blocks: they style one core block each, and that
-   is the only place the Site Editor can see them. What is left in this section
-   styles the group the header part wraps those blocks in, needs a media query,
-   or is a cascade fight theme.json cannot win — see the navigation hover
-   below. */
-
-.site-description {
-    color: var(--text-secondary);
-    font-size: 0.9rem;
-    letter-spacing: 0.1em;
-    margin-top: 0.5rem;
-}
+/* .site-title's and .site-description's own rules, and the navigation's type
+   and resting colour, are in theme.json now under styles.blocks: they style one
+   core block each, and that is the only place the Site Editor can see them.
+   What is left in this section styles the group the header part wraps those
+   blocks in, needs a media query, or is a cascade fight theme.json cannot win —
+   see the navigation hover below. */
 
 /* Qualified by the element, because core/navigation copies the block's classes
    onto its inner <ul> as well as onto the <nav>: a bare .site-nav rule pays this
@@ -448,38 +449,18 @@ nav.site-nav {
     margin-bottom: 0.25rem;
 }
 
-/* The adjacent post's title, which core renders as a bare anchor where
-   single.php wrapped it in a .nav-title span. */
-.post-navigation a {
-    color: var(--text-primary);
-    font-size: 0.95rem;
-}
-
-.post-navigation a:hover {
-    color: var(--accent);
-}
-
-/* Same division as .post-navigation above: core/comments-pagination lays its
-   own row out from the template's layout attribute, and what is left here is
-   the space around it. */
-.comment-navigation {
-    margin-bottom: 2rem;
-    font-size: 0.85rem;
-}
+/* The adjacent post's title is a link inside core/post-navigation-link, and its
+   colour and size are in theme.json under that block's elements.link. The label
+   above is not: it is a span core puts inside the block, which styles.blocks
+   reaches only through a raw css string. */
 
 /* "Newer comments" holds the right edge whether or not "Older comments" is
    there to push it, which is what .nav-next's text-align used to do. core names
-   these two after the block now, so there is no .nav-next here to scope. */
+   these two after the block now, so there is no .nav-next here to scope. The
+   pager's own spacing, type and link colours are theme.json's, under
+   styles.blocks["core/comments-pagination"]. */
 .comment-navigation .wp-block-comments-pagination-next {
     margin-left: auto;
-}
-
-.comment-navigation a {
-    color: var(--text-secondary);
-}
-
-.comment-navigation a:hover {
-    color: var(--accent);
 }
 
 /* ========== POST TAGS ========== */
@@ -530,10 +511,20 @@ nav.site-nav {
 }
 
 /* ========== PAGINATION ========== */
-/* Left here rather than moved to theme.json: everything below the first rule
-   selects a descendant of core/query-pagination — the numbers, the current one,
-   the previous and next links — and theme.json can only reach those through a
-   raw css string, which would be the same CSS somewhere harder to read.
+/* Left here rather than moved to theme.json, and not for the reason this
+   comment used to give. It said theme.json could only reach these through a raw
+   css string, which is wrong: core/query-pagination-previous and -next are
+   registered blocks and styles.blocks targets like any other.
+ *
+   The real obstacle is that they are two of three. core/query-pagination-numbers
+   renders a wrapper around <a class="page-numbers"> children, so the border,
+   padding and radius every pager item shares can be said on the previous and
+   next blocks but not on a number — and .current is a span inside that wrapper,
+   further out of reach again. Moving what can move would split one look across
+   two files and leave the numbers behind, which is the two-owners problem the
+   rest of this conversion spent its time removing. One rule set, one place,
+   until core gives the numbers a block of their own.
+ *
    core/query-pagination renders nothing at all when its children are all empty,
    so there is no empty pager to suppress on a no-results page. */
 .pagination {
@@ -617,23 +608,13 @@ nav.site-nav {
 }
 
 /* ========== ARCHIVE & SEARCH HEADERS ========== */
+/* The title and the description are core/query-title and core/term-description,
+   and both are in theme.json now. What is left is the group the archive and
+   search templates wrap them in, which is not a block and has no editor
+   presence to lose. */
 .archive-header {
     text-align: center;
     margin-bottom: 3rem;
-}
-
-.archive-title {
-    font-size: 1.2rem;
-    text-transform: uppercase;
-    letter-spacing: 0.15em;
-    color: var(--text-muted);
-    font-weight: 400;
-}
-
-.archive-description {
-    color: var(--text-secondary);
-    font-size: 0.9rem;
-    margin-top: 0.75rem;
 }
 
 /* ========== SEARCH FORM ========== */
@@ -1055,11 +1036,8 @@ nav.site-nav {
     display: inline-block;
 }
 
-.comment-metadata,
-.comment-metadata a {
-    color: var(--text-muted);
-    font-size: 0.8rem;
-}
+/* The comment's date is core/comment-date, and its colour and size are in
+   theme.json under that block. */
 
 .comment-content p {
     margin-bottom: 1rem;
