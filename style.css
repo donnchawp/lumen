@@ -360,11 +360,17 @@ nav.site-nav {
     padding: 0 var(--page-padding);
 }
 
-/* No width:100% here. It stretched every featured image to fill the 1304px
-   content box, so anything narrower was upscaled: a portrait frame served at
-   607px was blown up by 115%. The base img rule caps width at the container,
-   and auto margins centre whatever is narrower. */
+/* width:auto, not width:100%. Filling the 1304px content box upscaled anything
+   narrower: a 1054px portrait frame rendered 1304px wide and 1621px tall. The
+   base img rule caps width at the container, and auto margins centre whatever
+   is narrower.
+
+   Leaving width unset is not enough. Core's featured image block stylesheet
+   has .wp-block-post-featured-image :where(img){width:100%}, which outranks
+   the base img rule, so it has to be overridden here. Removing the theme's own
+   width:100% alone left the upscale in place on the live site. */
 .single-featured-image img {
+    width: auto;
     margin-left: auto;
     margin-right: auto;
     border-radius: 4px;
